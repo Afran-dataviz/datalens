@@ -1,0 +1,11 @@
+Date,Category,Product,Sales,Quantity,InStock
+2026-06-01,Electronics,Laptop,1200,1,true
+2026-06-02,Electronics,Phone,800,2,true
+2026-06-03,Furniture,Chair,150,5,true
+2026-06-04,Furniture,Table,450,1,false
+2026-06-05,Electronics,Headphones,200,4,true
+2026-06-06,Apparel,Shirt,45,3,true
+2026-06-07,Apparel,Shoes,120,1,true
+2026-06-08,Electronics,Monitor,350,2,false
+2026-06-09,Furniture,Lamp,80,2,true
+2026-06-10,Apparel,Socks,15,10,true

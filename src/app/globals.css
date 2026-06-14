@@ -3,25 +3,99 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #080A0F;
+  --card: #0E1117;
+  --card2: #141720;
+  --border: #1E2130;
+  --gold: #C9A84C;
+  --gold-light: #E8C97A;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --purple: #8B6FBB;
+  --text: #F5F0E8;
+  --muted: #6B7280;
+  --success: #2ECC71;
+  --error: #E74C3C;
+  --radius: 16px;
+  --radius-sm: 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.light {
+  --bg: #F9FAFB;
+  --card: #FFFFFF;
+  --card2: #F3F4F6;
+  --border: #E5E7EB;
+  --gold: #B38600;
+  --gold-light: #D4AF37;
+  --gold-glow: rgba(212, 175, 55, 0.15);
+  --purple: #7C3AED;
+  --text: #111827;
+  --muted: #4B5563;
+  --success: #10B981;
+  --error: #EF4444;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font-body), sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Custom Webkit Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+/* Gold glow card hover */
+.card-luxury {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.3s ease;
+}
+.card-luxury:hover {
+  border-color: rgba(201, 168, 76, 0.4);
+  box-shadow: 0 0 30px rgba(201, 168, 76, 0.08);
+}
+
+/* Gold gradient button */
+.btn-gold {
+  background: linear-gradient(135deg, #C9A84C, #E8C97A);
+  color: #080A0F;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+.btn-gold:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+.btn-gold:active {
+  transform: translateY(0);
+}
+
+/* Shimmer gold text */
+.text-gold-gradient {
+  background: linear-gradient(90deg, #C9A84C, #E8C97A, #C9A84C);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: 200% center; }
 }
