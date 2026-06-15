@@ -63,30 +63,23 @@ function SignupPageContent() {
     }
 
     try {
-      // Call Supabase signup
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback?plan=${selectedPlan}`,
-        }
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          plan: selectedPlan,
+        }),
       });
 
-      if (error) {
-        setErrorMsg(error.message);
-      } else if (data.user) {
-        // Create user profile in profiles table
-        await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email || email,
-            full_name: fullName,
-          });
-
+      if (!response.ok) {
+        const errorData = await response.json();
+        setErrorMsg(errorData.error || 'Failed to register account.');
+      } else {
         setSuccess(true);
       }
     } catch {
