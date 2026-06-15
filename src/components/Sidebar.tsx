@@ -144,7 +144,14 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
             
             {(!collapsed || mobileOpen) && (
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold truncate leading-tight">{user.fullName}</div>
+                <div className="text-sm font-semibold truncate leading-tight flex items-center gap-1.5">
+                  <span className="truncate">{user.fullName}</span>
+                  {user.plan === 'pro' && (
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded leading-none bg-gold text-[#080A0F] border border-gold-light shrink-0">
+                      PRO
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded leading-none ${
                     user.plan === 'pro' 
