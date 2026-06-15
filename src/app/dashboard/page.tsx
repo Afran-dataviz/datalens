@@ -74,10 +74,14 @@ export default function DashboardPage() {
         setUser(user);
         const { data: subscription } = await supabase
           .from('subscriptions')
-          .select('plan')
+          .select('plan, status')
           .eq('user_id', user.id)
           .maybeSingle();
-        if (subscription) setPlan(subscription.plan || 'free');
+        if (subscription && subscription.plan === 'pro' && subscription.status === 'active') {
+          setPlan('pro');
+        } else {
+          setPlan('free');
+        }
       }
     };
     fetchUser();

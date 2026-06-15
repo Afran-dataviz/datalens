@@ -26,9 +26,11 @@ export default async function DashboardLayout({
   // Fetch user subscription details
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('plan')
+    .select('plan, status')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  const activePlan = (subscription?.plan === 'pro' && subscription?.status === 'active') ? 'pro' : 'free';
 
   // Check if user is registered in admin role
   const { data: admin } = await supabase
@@ -41,7 +43,7 @@ export default async function DashboardLayout({
     email: user.email || '',
     fullName: profile?.full_name || user.user_metadata?.full_name || 'User',
     avatarUrl: profile?.avatar_url || '',
-    plan: subscription?.plan || 'free',
+    plan: activePlan,
     isAdmin: !!admin,
   };
 
