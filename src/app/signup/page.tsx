@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 import { 
@@ -13,8 +13,8 @@ import {
   AlertCircle, 
   ArrowLeft,
   Sparkles,
-  Inbox,
-  Database
+  Database,
+  CheckCircle
 } from 'lucide-react';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -25,6 +25,7 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 function SignupPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const supabase = createClient();
 
   const [fullName, setFullName] = useState('');
@@ -80,7 +81,19 @@ function SignupPageContent() {
         const errorData = await response.json();
         setErrorMsg(errorData.error || 'Failed to register account.');
       } else {
-        setSuccess(true);
+        // Sign in immediately since email verification is disabled
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (signInError) {
+          setErrorMsg('Account created, but automatic login failed: ' + signInError.message + '. Please log in manually.');
+        } else {
+          setSuccess(true);
+          router.push('/dashboard');
+          router.refresh();
+        }
       }
     } catch {
       setErrorMsg('A network error occurred. Please try again.');
@@ -176,12 +189,12 @@ function SignupPageContent() {
           {success ? (
             <div className="text-center space-y-6">
               <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto text-gold animate-bounce">
-                <Inbox className="w-8 h-8" />
+                <CheckCircle className="w-8 h-8 text-gold-light" />
               </div>
               <div className="space-y-2">
-                <h1 className="font-heading text-3xl font-bold tracking-tight">Verify Your Email</h1>
+                <h1 className="font-heading text-3xl font-bold tracking-tight">Account Created</h1>
                 <p className="text-sm text-text-muted font-light max-w-sm mx-auto leading-relaxed">
-                  We&apos;ve sent a confirmation link to <span className="font-bold text-text-primary">{email}</span>. Click the link inside the email to activate your account.
+                  Your account has been created successfully. Redirecting you to the dashboard...
                 </p>
               </div>
               <div className="pt-4">
