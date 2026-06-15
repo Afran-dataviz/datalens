@@ -429,6 +429,9 @@ export default function DashboardPage() {
     if (!user || parsedData.length === 0) return;
     setSaving(true);
     
+    let fileInserted = false;
+    let fileId = '';
+
     try {
       // 1. Calculate summary statistics (to store in analyses table)
       const summaryStats: Record<string, any> = {};
@@ -480,29 +483,12 @@ export default function DashboardPage() {
         }
       });
 
-      // 2. Insert record in `files` table
-      const fileId = crypto.randomUUID();
+      fileId = crypto.randomUUID();
       const storagePath = `${user.id}/${fileId}/data.json`;
-      
-      const { error: fileError } = await supabase
-        .from('files')
-        .insert({
-          id: fileId,
-          user_id: user.id,
-          file_name: file?.name || 'parsed_dataset.json',
-          file_type: file?.name.split('.').pop() || 'json',
-          file_size: file?.size || JSON.stringify(parsedData).length,
-          storage_path: storagePath,
-          row_count: parsedData.length,
-          column_count: columns.length
-        });
-
-      if (fileError) throw fileError;
-
-      // 3. Upload parsed cleaned data to our secure API route
-      // We upload the data array as a JSON string to enforce server-side plan limits
       const jsonContent = JSON.stringify(parsedData);
-      
+
+      // 2. Upload parsed cleaned data to our secure API route first
+      // We upload the data array as a JSON string to enforce server-side plan limits
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
@@ -518,6 +504,23 @@ export default function DashboardPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to upload dataset.');
       }
+
+      // 3. Insert record in `files` table after successful upload
+      const { error: fileError } = await supabase
+        .from('files')
+        .insert({
+          id: fileId,
+          user_id: user.id,
+          file_name: file?.name || 'parsed_dataset.json',
+          file_type: file?.name.split('.').pop() || 'json',
+          file_size: file?.size || jsonContent.length,
+          storage_path: storagePath,
+          row_count: parsedData.length,
+          column_count: columns.length
+        });
+
+      if (fileError) throw fileError;
+      fileInserted = true;
 
       // 4. Create record in `analyses` table
       const cleaningOptions = {
@@ -546,6 +549,9 @@ export default function DashboardPage() {
       router.refresh();
       
     } catch (err: any) {
+      if (fileInserted) {
+        await supabase.from('files').delete().eq('id', fileId);
+      }
       setErrorMsg(err.message || 'Failed to save analysis properties.');
     } finally {
       setSaving(false);
