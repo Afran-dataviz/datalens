@@ -39,10 +39,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create user instance' }, { status: 500 });
     }
 
-    // 2. Insert user profile into the profiles table
+    // 2. Upsert user profile into the profiles table
     const { error: profileError } = await adminSupabase
       .from('profiles')
-      .insert({
+      .upsert({
         id: user.id,
         email: user.email || email,
         full_name: fullName,
