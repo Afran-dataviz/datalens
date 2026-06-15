@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import BroadcastBanner from '@/components/BroadcastBanner';
+import DashboardContainer from '@/components/DashboardContainer';
 
 export default async function DashboardLayout({
   children,
@@ -47,12 +46,8 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-[#080A0F] text-[#F5F0E8] font-body">
-      <Sidebar user={userProfile} />
-      <div className="flex-grow flex flex-col min-w-0 h-screen overflow-y-auto">
-        <BroadcastBanner />
-        {children}
-      </div>
-    </div>
+    <DashboardContainer user={userProfile}>
+      {children}
+    </DashboardContainer>
   );
 }

@@ -114,16 +114,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080A0F] text-[#F5F0E8] flex font-body">
+    <div className="min-h-screen bg-background text-text-primary flex font-body">
       
       {/* Left Panel - Branding & Stats (Hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 bg-[#0E1117] border-r border-[#1E2130] p-16 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-card border-r border-border p-16 flex-col justify-between relative overflow-hidden">
         {/* Glow circles */}
         <div className="absolute top-[-100px] left-[-100px] w-[350px] h-[350px] bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-100px] right-[-100px] w-[350px] h-[350px] bg-purple/5 rounded-full blur-[100px] pointer-events-none" />
 
         <Link href="/" className="font-heading text-2xl font-bold tracking-wide text-gold-light self-start">
-          Data<span className="text-[#F5F0E8]">Lens</span>
+          Data<span className="text-text-primary">Lens</span>
         </Link>
 
         <div className="my-auto space-y-12">
@@ -131,7 +131,7 @@ export default function LoginPage() {
             <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight">
               Unlock the Secret Story of <span className="text-gold-gradient font-heading">Your Data</span>
             </h2>
-            <p className="text-[#6B7280] font-light leading-relaxed text-base">
+            <p className="text-text-muted font-light leading-relaxed text-base">
               A high-precision suite engineered for spreadsheet analysis. Zero-knowledge local browser parsing, smart correction pipelines, and AI data extraction.
             </p>
           </div>
@@ -142,13 +142,13 @@ export default function LoginPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex items-center gap-4 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/80 backdrop-blur max-w-sm"
+              className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card2/80 backdrop-blur max-w-sm"
             >
               <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center border border-gold/20">
                 <Database className="w-5 h-5 text-gold-light" />
               </div>
               <div>
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider">Storage Encryption</div>
+                <div className="text-xs text-text-muted uppercase tracking-wider">Storage Encryption</div>
                 <div className="text-sm font-semibold">100% Browser Local Parser</div>
               </div>
             </motion.div>
@@ -157,20 +157,20 @@ export default function LoginPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex items-center gap-4 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/80 backdrop-blur max-w-sm ml-8"
+              className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card2/80 backdrop-blur max-w-sm ml-8"
             >
               <div className="w-10 h-10 rounded-lg bg-purple/10 flex items-center justify-center border border-purple/20">
                 <Sparkles className="w-5 h-5 text-purple" />
               </div>
               <div>
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider">AI Streaming API</div>
+                <div className="text-xs text-text-muted uppercase tracking-wider">AI Streaming API</div>
                 <div className="text-sm font-semibold">Groq Llama-3 8B context</div>
               </div>
             </motion.div>
           </div>
         </div>
 
-        <div className="text-xs text-[#6B7280] font-light">
+        <div className="text-xs text-text-muted font-light">
           &copy; {new Date().getFullYear()} DataLens Inc. All rights reserved.
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function LoginPage() {
       {/* Right Panel - Auth Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 relative">
         <div className="absolute inset-0 bg-gold/[0.01] pointer-events-none" />
-        <Link href="/" className="lg:hidden absolute top-8 left-8 text-[#6B7280] hover:text-gold-light flex items-center gap-2 text-sm">
+        <Link href="/" className="lg:hidden absolute top-8 left-8 text-text-muted hover:text-gold-light flex items-center gap-2 text-sm">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
 
@@ -188,7 +188,7 @@ export default function LoginPage() {
             <h1 className="font-heading text-3xl md:text-4xl font-bold tracking-tight">
               {showForgot ? 'Reset Password' : 'Sign In'}
             </h1>
-            <p className="text-sm text-[#6B7280] font-light">
+            <p className="text-sm text-text-muted font-light">
               {showForgot 
                 ? 'Enter your email to receive a secure recovery link.' 
                 : 'Welcome back. Enter your credentials to access your dashboard.'
@@ -198,14 +198,14 @@ export default function LoginPage() {
 
           {/* Messages */}
           {errorMsg && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-[#E74C3C]/10 border border-[#E74C3C]/30 text-[#E74C3C] text-sm">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-error/10 border border-error/30 text-error text-sm">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {infoMsg && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-[#2ECC71]/10 border border-[#2ECC71]/30 text-[#2ECC71] text-sm">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-sm">
               <CheckCircle className="w-5 h-5 shrink-0" />
               <span>{infoMsg}</span>
             </div>
@@ -215,9 +215,9 @@ export default function LoginPage() {
           {!showForgot ? (
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Email Address</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-[#6B7280]" />
+                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-text-muted" />
                   <input
                     type="email"
                     placeholder="name@company.com"
@@ -225,14 +225,14 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={loading}
-                    className="w-full pl-12 pr-4 py-3.5 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full pl-12 pr-4 py-3.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Password</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Password</label>
                   <button 
                     type="button" 
                     onClick={() => {
@@ -246,7 +246,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-3.5 w-4 h-4 text-[#6B7280]" />
+                  <Lock className="absolute left-4 top-3.5 w-4 h-4 text-text-muted" />
                   <input
                     type="password"
                     placeholder="••••••••"
@@ -254,7 +254,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={loading}
-                    className="w-full pl-12 pr-4 py-3.5 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full pl-12 pr-4 py-3.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -274,9 +274,9 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Email Address</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-[#6B7280]" />
+                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-text-muted" />
                   <input
                     type="email"
                     placeholder="name@company.com"
@@ -284,7 +284,7 @@ export default function LoginPage() {
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
                     disabled={forgotLoading}
-                    className="w-full pl-12 pr-4 py-3.5 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full pl-12 pr-4 py-3.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function LoginPage() {
                     setInfoMsg(null);
                   }}
                   disabled={forgotLoading}
-                  className="w-1/2 py-3.5 border border-[#1E2130] text-xs uppercase tracking-wider font-bold rounded-xl hover:bg-[#141720] transition disabled:opacity-50"
+                  className="w-1/2 py-3.5 border border-border text-xs uppercase tracking-wider font-bold rounded-xl hover:bg-card2 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -317,22 +317,22 @@ export default function LoginPage() {
           {!showForgot && (
             <>
               <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-[#1E2130]"></div>
-                <span className="flex-shrink mx-4 text-xs uppercase text-[#6B7280] font-mono tracking-widest">or continue with</span>
-                <div className="flex-grow border-t border-[#1E2130]"></div>
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-4 text-xs uppercase text-text-muted font-mono tracking-widest">or continue with</span>
+                <div className="flex-grow border-t border-border"></div>
               </div>
 
               {/* OAuth Login */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-4 border border-[#1E2130] rounded-xl hover:bg-[#141720] text-sm font-semibold flex items-center justify-center gap-3 transition"
+                className="w-full py-4 border border-border rounded-xl hover:bg-card2 text-sm font-semibold flex items-center justify-center gap-3 transition"
               >
                 <GoogleIcon className="w-4 h-4" /> Google Workspace
               </button>
 
               {/* Signup Link */}
-              <div className="text-center text-sm text-[#6B7280] font-light">
+              <div className="text-center text-sm text-text-muted font-light">
                 Don&apos;t have an account?{' '}
                 <Link href="/signup" className="text-gold hover:text-gold-light transition font-semibold">
                   Create an account

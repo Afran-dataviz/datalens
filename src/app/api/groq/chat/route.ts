@@ -31,7 +31,7 @@ Answer the user's questions about this data accurately. Highlight anomalies, exp
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages
@@ -58,9 +58,10 @@ Answer the user's questions about this data accurately. Highlight anomalies, exp
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "An error occurred while connecting to Groq.";
     return NextResponse.json(
-      { error: error.message || "An error occurred while connecting to Groq." },
+      { error: message },
       { status: 500 }
     );
   }

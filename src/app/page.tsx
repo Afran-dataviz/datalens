@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, 
   BarChart3, 
@@ -12,8 +12,11 @@ import {
   ArrowRight, 
   Check, 
   ChevronDown, 
-  FileSpreadsheet
+  FileSpreadsheet,
+  Menu,
+  X
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const TwitterIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -37,6 +40,7 @@ const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function LandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
     {
@@ -142,25 +146,26 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#080A0F] text-[#F5F0E8] font-body selection:bg-gold/30 selection:text-white">
+    <div className="min-h-screen bg-background text-text-primary font-body selection:bg-gold/30 selection:text-white">
       
       {/* Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md border-b border-[#1E2130]/80 bg-[#080A0F]/90">
+      <header className="sticky top-0 z-50 backdrop-blur-md border-b border-border/80 bg-background/90">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-heading text-2xl font-bold tracking-wide text-gold-light">
-              Data<span className="text-[#F5F0E8]">Lens</span>
+              Data<span className="text-text-primary">Lens</span>
             </span>
           </div>
           
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#6B7280]">
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-text-muted">
             <a href="#features" className="hover:text-gold-light transition">Features</a>
             <a href="#workflow" className="hover:text-gold-light transition">How It Works</a>
             <a href="#pricing" className="hover:text-gold-light transition">Pricing</a>
             <a href="#faq" className="hover:text-gold-light transition">FAQ</a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4">
+            <ThemeToggle />
             <Link href="/login" className="text-sm font-semibold hover:text-gold-light transition px-4 py-2">
               Log in
             </Link>
@@ -168,11 +173,96 @@ export default function LandingPage() {
               Get Started <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
+
+          {/* Mobile Menu Actions */}
+          <div className="flex md:hidden items-center gap-3">
+            <ThemeToggle />
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 border border-border rounded-xl text-text-primary hover:text-gold-light transition"
+              aria-label="Open mobile menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed inset-0 z-50 bg-background flex flex-col p-6"
+          >
+            <div className="flex items-center justify-between pb-6 border-b border-border">
+              <span className="font-heading text-2xl font-bold tracking-wide text-gold-light">
+                Data<span className="text-text-primary">Lens</span>
+              </span>
+              <button 
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 border border-border rounded-xl text-text-primary hover:text-gold-light transition"
+                aria-label="Close mobile menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <nav className="flex flex-col gap-6 py-10 text-lg font-semibold text-text-muted">
+              <a 
+                href="#features" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-gold-light transition"
+              >
+                Features
+              </a>
+              <a 
+                href="#workflow" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-gold-light transition"
+              >
+                How It Works
+              </a>
+              <a 
+                href="#pricing" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-gold-light transition"
+              >
+                Pricing
+              </a>
+              <a 
+                href="#faq" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-gold-light transition"
+              >
+                FAQ
+              </a>
+            </nav>
+
+            <div className="mt-auto flex flex-col gap-4">
+              <Link 
+                href="/login" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-4 border border-border text-center font-bold text-sm tracking-wider uppercase rounded-xl hover:bg-card transition"
+              >
+                Log In
+              </Link>
+              <Link 
+                href="/signup" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-4 btn-gold text-center font-bold text-sm tracking-wider uppercase rounded-xl flex items-center justify-center gap-2 shadow-lg"
+              >
+                Get Started <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
-      <section className="relative pt-24 pb-32 overflow-hidden">
+      <section className="relative pt-16 md:pt-24 pb-24 md:pb-32 overflow-hidden">
         {/* Glow effect backgrounds */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-purple/5 rounded-full blur-[100px] pointer-events-none" />
@@ -183,24 +273,24 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#1E2130] bg-[#0E1117] text-xs font-semibold tracking-wider text-gold-light uppercase mb-6">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card text-xs font-semibold tracking-wider text-gold-light uppercase mb-6">
               <Sparkles className="w-3.5 h-3.5" /> Next-Gen Data Assistant
             </span>
 
-            <h1 className="font-heading text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
+            <h1 className="font-heading text-4xl md:text-7xl font-bold tracking-tight mb-6 md:mb-8 leading-[1.15] md:leading-[1.1]">
               Turn Messy Data into <br />
               <span className="text-gold-gradient font-heading">Beautiful Insights</span>
             </h1>
 
-            <p className="max-w-2xl mx-auto text-lg md:text-xl text-[#6B7280] font-light leading-relaxed mb-10">
+            <p className="max-w-2xl mx-auto text-base md:text-xl text-text-muted font-light leading-relaxed mb-8 md:mb-10">
               Upload spreadsheets, clean duplicates and null values automatically, generate stunning visual dashboards, and query your data using AI.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 max-w-sm mx-auto sm:max-w-none">
               <Link href="/signup" className="btn-gold px-8 py-4 text-sm tracking-wider uppercase w-full sm:w-auto shadow-lg shadow-gold/10">
                 Start Analysing Free
               </Link>
-              <a href="#demo" className="px-8 py-4 text-sm font-semibold tracking-wider uppercase border border-[#1E2130] rounded-[10px] bg-[#0E1117]/80 hover:bg-[#141720] hover:border-gold/30 transition w-full sm:w-auto">
+              <a href="#demo" className="px-8 py-4 text-sm font-semibold tracking-wider uppercase border border-border rounded-[10px] bg-card/80 hover:bg-card2 hover:border-gold/30 transition w-full sm:w-auto">
                 View Live Demo
               </a>
             </div>
@@ -212,15 +302,15 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.2 }}
             id="demo"
-            className="relative rounded-2xl border border-[#1E2130] bg-[#0E1117] p-4 md:p-6 shadow-2xl max-w-4xl mx-auto"
+            className="relative rounded-2xl border border-border bg-card p-4 md:p-6 shadow-2xl max-w-4xl mx-auto"
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080A0F] via-transparent to-transparent opacity-60 pointer-events-none rounded-2xl" />
-            <div className="flex items-center justify-between border-b border-[#1E2130] pb-4 mb-4">
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-60 pointer-events-none rounded-2xl" />
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#E74C3C]/60" />
-                <div className="w-3 h-3 rounded-full bg-[#C9A84C]/60" />
-                <div className="w-3 h-3 rounded-full bg-[#2ECC71]/60" />
-                <span className="text-xs text-[#6B7280] ml-4 font-mono">dashboard_preview.csv</span>
+                <div className="w-3 h-3 rounded-full bg-error/60" />
+                <div className="w-3 h-3 rounded-full bg-gold/60" />
+                <div className="w-3 h-3 rounded-full bg-success/60" />
+                <span className="text-xs text-text-muted ml-4 font-mono">dashboard_preview.csv</span>
               </div>
               <span className="text-xs px-2.5 py-1 rounded bg-gold/10 text-gold-light border border-gold/20 font-semibold uppercase tracking-wider">
                 Pro Dashboard
@@ -228,33 +318,33 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-left">
-              <div className="p-4 rounded-xl bg-[#141720] border border-[#1E2130]">
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider mb-1">Total Rows</div>
-                <div className="text-2xl font-bold text-[#F5F0E8] font-heading">12,482</div>
-                <div className="text-[10px] text-green-400 mt-1">100% Parsed Successfully</div>
+              <div className="p-4 rounded-xl bg-card2 border border-border">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Total Rows</div>
+                <div className="text-2xl font-bold text-text-primary font-heading">12,482</div>
+                <div className="text-[10px] text-success mt-1">100% Parsed Successfully</div>
               </div>
-              <div className="p-4 rounded-xl bg-[#141720] border border-[#1E2130]">
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider mb-1">Duplicates Removed</div>
+              <div className="p-4 rounded-xl bg-card2 border border-border">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Duplicates Removed</div>
                 <div className="text-2xl font-bold text-gold font-heading">342</div>
                 <div className="text-[10px] text-gold-light mt-1">Cleansed Auto-wizard</div>
               </div>
-              <div className="p-4 rounded-xl bg-[#141720] border border-[#1E2130]">
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider mb-1">Missing Fields Filled</div>
+              <div className="p-4 rounded-xl bg-card2 border border-border">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Missing Fields Filled</div>
                 <div className="text-2xl font-bold text-purple font-heading">1,209</div>
-                <div className="text-[10px] text-[#8B6FBB] mt-1">Mean value interpolation</div>
+                <div className="text-[10px] text-purple mt-1">Mean value interpolation</div>
               </div>
             </div>
 
             {/* Dummy Mockup Chart Graphics */}
-            <div className="h-60 rounded-xl bg-[#141720]/50 border border-[#1E2130] flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="h-60 rounded-xl bg-card2/50 border border-border flex flex-col items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 flex items-end justify-between px-8 pt-10">
                 {[40, 65, 50, 85, 70, 95, 80, 110, 90, 120, 95, 130].map((h, i) => (
                   <div key={i} className="w-8 bg-gradient-to-t from-gold/10 to-gold rounded-t" style={{ height: `${h}%` }} />
                 ))}
               </div>
-              <div className="z-10 bg-[#0E1117]/90 px-4 py-3 rounded-lg border border-[#1E2130] text-center max-w-sm backdrop-blur-sm">
-                <p className="text-xs font-semibold text-[#F5F0E8]">Sales Trends & Forecast Analysis</p>
-                <p className="text-[10px] text-[#6B7280] mt-1">Renders auto charts dynamically based on date & numeric variables.</p>
+              <div className="z-10 bg-card/90 px-4 py-3 rounded-lg border border-border text-center max-w-sm backdrop-blur-sm">
+                <p className="text-xs font-semibold text-text-primary">Sales Trends & Forecast Analysis</p>
+                <p className="text-[10px] text-text-muted mt-1">Renders auto charts dynamically based on date & numeric variables.</p>
               </div>
             </div>
           </motion.div>
@@ -262,13 +352,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-32 bg-[#0E1117]/30 border-y border-[#1E2130]">
+      <section id="features" className="py-32 bg-card/30 border-y border-border">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-6">
               Designed For High-Performance Analytics
             </h2>
-            <p className="text-[#6B7280] text-lg font-light">
+            <p className="text-text-muted text-lg font-light">
               Skip complex formulas and expensive setups. Upload and clean datasets with our luxury workspace tools.
             </p>
           </div>
@@ -276,13 +366,13 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, idx) => (
               <div key={idx} className="card-luxury p-8 flex flex-col gap-5">
-                <div className="w-12 h-12 rounded-xl bg-[#141720] border border-[#1E2130] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-card2 border border-border flex items-center justify-center">
                   {feature.icon}
                 </div>
-                <h3 className="font-heading text-xl font-bold text-[#F5F0E8]">
+                <h3 className="font-heading text-xl font-bold text-text-primary">
                   {feature.title}
                 </h3>
-                <p className="text-[#6B7280] text-sm leading-relaxed font-light">
+                <p className="text-text-muted text-sm leading-relaxed font-light">
                   {feature.description}
                 </p>
               </div>
@@ -298,7 +388,7 @@ export default function LandingPage() {
             <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-6">
               Three Steps to Full Clarity
             </h2>
-            <p className="text-[#6B7280] text-lg font-light">
+            <p className="text-text-muted text-lg font-light">
               The fastest way to transform raw database files and CSV sheets into client-ready visual dashboards.
             </p>
           </div>
@@ -309,11 +399,11 @@ export default function LandingPage() {
 
             {steps.map((step, idx) => (
               <div key={idx} className="relative z-10 text-center flex flex-col items-center">
-                <div className="w-20 h-20 rounded-full bg-[#0E1117] border border-[#1E2130] flex items-center justify-center font-heading text-xl font-extrabold text-gold shadow-lg mb-6">
+                <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center font-heading text-xl font-extrabold text-gold shadow-lg mb-6">
                   {step.number}
                 </div>
-                <h3 className="font-heading text-2xl font-bold text-[#F5F0E8] mb-3">{step.name}</h3>
-                <p className="text-[#6B7280] text-sm leading-relaxed max-w-xs font-light">{step.desc}</p>
+                <h3 className="font-heading text-2xl font-bold text-text-primary mb-3">{step.name}</h3>
+                <p className="text-text-muted text-sm leading-relaxed max-w-xs font-light">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -321,13 +411,13 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-32 bg-[#0E1117]/30 border-t border-[#1E2130]">
+      <section id="pricing" className="py-32 bg-card/30 border-t border-border">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-6">
               Transparent, Premium Plans
             </h2>
-            <p className="text-[#6B7280] text-lg font-light">
+            <p className="text-text-muted text-lg font-light">
               Test out the wizard tool with our free plan, or unlock complete AI analytics with Stripe test checkout.
             </p>
           </div>
@@ -336,27 +426,27 @@ export default function LandingPage() {
             {pricing.map((card, idx) => (
               <div 
                 key={idx} 
-                className={`rounded-2xl border bg-[#0E1117] p-8 md:p-10 flex flex-col justify-between transition relative overflow-hidden ${
-                  card.accent ? 'border-gold shadow-xl shadow-gold/5' : 'border-[#1E2130]'
+                className={`rounded-2xl border bg-card p-8 md:p-10 flex flex-col justify-between transition relative overflow-hidden ${
+                  card.accent ? 'border-gold shadow-xl shadow-gold/5' : 'border-border'
                 }`}
               >
                 {card.accent && (
-                  <div className="absolute top-0 right-0 bg-gold text-[#080A0F] text-[10px] tracking-widest font-extrabold uppercase py-1.5 px-5 rounded-bl-lg">
+                  <div className="absolute top-0 right-0 bg-gold text-background text-[10px] tracking-widest font-extrabold uppercase py-1.5 px-5 rounded-bl-lg">
                     Recommended
                   </div>
                 )}
                 <div>
-                  <h3 className="font-heading text-2xl font-bold text-[#F5F0E8] mb-2">{card.name}</h3>
-                  <p className="text-sm text-[#6B7280] font-light mb-6">{card.desc}</p>
+                  <h3 className="font-heading text-2xl font-bold text-text-primary mb-2">{card.name}</h3>
+                  <p className="text-sm text-text-muted font-light mb-6">{card.desc}</p>
                   
                   <div className="flex items-baseline gap-2 mb-8">
-                    <span className="font-heading text-5xl font-extrabold text-[#F5F0E8]">{card.price}</span>
-                    <span className="text-[#6B7280] text-sm font-light">/ {card.period}</span>
+                    <span className="font-heading text-5xl font-extrabold text-text-primary">{card.price}</span>
+                    <span className="text-text-muted text-sm font-light">/ {card.period}</span>
                   </div>
 
                   <ul className="space-y-4 mb-10">
                     {card.features.map((f, i) => (
-                      <li key={i} className="flex items-center gap-3 text-sm text-[#6B7280] font-light">
+                      <li key={i} className="flex items-center gap-3 text-sm text-text-muted font-light">
                         <Check className="w-4.5 h-4.5 text-gold shrink-0" />
                         <span>{f}</span>
                       </li>
@@ -369,7 +459,7 @@ export default function LandingPage() {
                   className={`w-full py-4 text-xs font-bold uppercase tracking-wider text-center rounded-[10px] block transition ${
                     card.accent 
                       ? 'btn-gold shadow-lg shadow-gold/15'
-                      : 'border border-[#1E2130] bg-[#141720] hover:bg-[#1E2130] text-[#F5F0E8]'
+                      : 'border border-border bg-card2 hover:bg-border text-text-primary'
                   }`}
                 >
                   {card.buttonText}
@@ -381,13 +471,13 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-32 border-t border-[#1E2130]">
+      <section id="faq" className="py-32 border-t border-border">
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-20">
             <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-6">
               Frequently Asked Questions
             </h2>
-            <p className="text-[#6B7280] text-lg font-light">
+            <p className="text-text-muted text-lg font-light">
               Clear answers to your security and usage queries.
             </p>
           </div>
@@ -396,13 +486,13 @@ export default function LandingPage() {
             {faqs.map((faq, idx) => (
               <div 
                 key={idx} 
-                className="border border-[#1E2130] bg-[#0E1117] rounded-xl overflow-hidden transition"
+                className="border border-border bg-card rounded-xl overflow-hidden transition"
               >
                 <button
                   onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                  className="w-full flex items-center justify-between p-6 text-left hover:bg-[#141720]/30 transition"
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-card2/30 transition"
                 >
-                  <span className="font-heading text-base md:text-lg font-bold text-[#F5F0E8]">
+                  <span className="font-heading text-base md:text-lg font-bold text-text-primary">
                     {faq.q}
                   </span>
                   <ChevronDown 
@@ -413,7 +503,7 @@ export default function LandingPage() {
                 </button>
 
                 {activeFaq === idx && (
-                  <div className="px-6 pb-6 pt-2 border-t border-[#1E2130]/30 text-sm text-[#6B7280] leading-relaxed font-light">
+                  <div className="px-6 pb-6 pt-2 border-t border-border/30 text-sm text-text-muted leading-relaxed font-light">
                     {faq.a}
                   </div>
                 )}
@@ -424,18 +514,18 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#1E2130] bg-[#080A0F] py-16">
+      <footer className="border-t border-border bg-background py-16">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="text-center md:text-left">
             <span className="font-heading text-xl font-bold text-gold-light">
-              Data<span className="text-[#F5F0E8]">Lens</span>
+              Data<span className="text-text-primary">Lens</span>
             </span>
-            <p className="text-[#6B7280] text-xs font-light mt-2 max-w-xs leading-relaxed">
+            <p className="text-text-muted text-xs font-light mt-2 max-w-xs leading-relaxed">
               Premium browser-based analytics and data cleaning platform powered by artificial intelligence.
             </p>
           </div>
 
-          <div className="flex gap-6 text-xs text-[#6B7280] font-light">
+          <div className="flex gap-6 text-xs text-text-muted font-light">
             <a href="#features" className="hover:text-gold-light transition">Features</a>
             <a href="#pricing" className="hover:text-gold-light transition">Pricing</a>
             <a href="#" className="hover:text-gold-light transition">Privacy Policy</a>
@@ -443,18 +533,18 @@ export default function LandingPage() {
           </div>
 
           <div className="flex gap-4">
-            <a href="#" className="w-9 h-9 rounded-lg border border-[#1E2130] bg-[#0E1117] flex items-center justify-center text-[#6B7280] hover:text-gold-light hover:border-gold/30 transition">
+            <a href="#" className="w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-text-muted hover:text-gold-light hover:border-gold/30 transition">
               <TwitterIcon className="w-4 h-4" />
             </a>
-            <a href="#" className="w-9 h-9 rounded-lg border border-[#1E2130] bg-[#0E1117] flex items-center justify-center text-[#6B7280] hover:text-gold-light hover:border-gold/30 transition">
+            <a href="#" className="w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-text-muted hover:text-gold-light hover:border-gold/30 transition">
               <LinkedinIcon className="w-4 h-4" />
             </a>
-            <a href="#" className="w-9 h-9 rounded-lg border border-[#1E2130] bg-[#0E1117] flex items-center justify-center text-[#6B7280] hover:text-gold-light hover:border-gold/30 transition">
+            <a href="#" className="w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-text-muted hover:text-gold-light hover:border-gold/30 transition">
               <GithubIcon className="w-4 h-4" />
             </a>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-6 text-center md:text-left mt-8 pt-8 border-t border-[#1E2130]/30 text-[10px] text-[#6B7280] font-light">
+        <div className="max-w-7xl mx-auto px-6 text-center md:text-left mt-8 pt-8 border-t border-border/30 text-[10px] text-text-muted font-light">
           &copy; {new Date().getFullYear()} DataLens Inc. All rights reserved. Built with Next.js 14, Supabase, and Stripe Test Mode.
         </div>
       </footer>

@@ -22,6 +22,7 @@ import {
   Info,
   AlertCircle
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface ColumnMeta {
   name: string;
@@ -111,11 +112,16 @@ export default function DashboardPage() {
 
   const processFile = (selectedFile: File) => {
     setErrorMsg(null);
-    const sizeLimit = plan === 'pro' ? 50 : 5; // 5MB free, 50MB pro
+    const isPro = plan === 'pro';
+    const sizeLimit = isPro ? 50 : 5; // 5MB free, 50MB pro
     const fileSizeMB = selectedFile.size / (1024 * 1024);
 
     if (fileSizeMB > sizeLimit) {
-      setErrorMsg(`File size exceeds your plan limit. Limit is ${sizeLimit}MB. Please upgrade to Pro for larger files.`);
+      if (!isPro) {
+        setErrorMsg("Upgrade to Pro for files up to 50MB");
+      } else {
+        setErrorMsg("File size exceeds maximum limit of 50MB.");
+      }
       return;
     }
 
@@ -489,21 +495,24 @@ export default function DashboardPage() {
 
       if (fileError) throw fileError;
 
-      // 3. Upload parsed cleaned data to Supabase Storage bucket `uploads`
-      // We upload the data array as a JSON file
+      // 3. Upload parsed cleaned data to our secure API route
+      // We upload the data array as a JSON string to enforce server-side plan limits
       const jsonContent = JSON.stringify(parsedData);
-      const fileBlob = new Blob([jsonContent], { type: 'application/json' });
       
-      const { error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(storagePath, fileBlob, {
-          contentType: 'application/json',
-          cacheControl: '3600',
-          upsert: true
-        });
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          storagePath,
+          fileContent: jsonContent,
+        }),
+      });
 
-      if (uploadError) {
-        throw new Error(`Cloud Storage Upload Failed: ${uploadError.message}. Verify that the "uploads" storage bucket has RLS enabled and allows authenticated uploads.`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload dataset.');
       }
 
       // 4. Create record in `analyses` table
@@ -540,32 +549,36 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12 w-full space-y-10">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-12 w-full space-y-8 md:space-y-10">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-[#1E2130] gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-border gap-4">
         <div>
-          <h1 className="font-heading text-3xl font-bold flex items-center gap-2">
-            Upload Dataset <span className="text-[10px] uppercase font-mono tracking-widest text-[#6B7280] font-normal">SaaS Suite</span>
+          <h1 className="font-heading text-2xl md:text-3xl font-bold flex items-center gap-2">
+            Upload Dataset <span className="text-[10px] uppercase font-mono tracking-widest text-text-muted font-normal">SaaS Suite</span>
           </h1>
-          <p className="text-sm text-[#6B7280] font-light mt-1">
+          <p className="text-xs md:text-sm text-text-muted font-light mt-1">
             Feed any CSV, Excel, or JSON sheet to correct fields, clean duplicate structures, and preview schema trees.
           </p>
         </div>
         
-        {plan === 'free' && (
-          <div className="flex items-center gap-3 bg-gold/5 border border-gold/15 px-4 py-2.5 rounded-xl text-xs text-gold-light">
-            <Info className="w-4.5 h-4.5 shrink-0" />
-            <span>Plan limit: <strong className="font-bold text-white">5MB</strong>. Upgrade to unlock <strong className="font-bold text-white">50MB</strong>.</span>
-          </div>
-        )}
+        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+          <ThemeToggle className="hidden md:flex" />
+          
+          {plan === 'free' && (
+            <div className="flex items-center gap-3 bg-gold/5 border border-gold/15 px-4 py-2.5 rounded-xl text-xs text-gold-light w-full md:w-auto">
+              <Info className="w-4.5 h-4.5 shrink-0" />
+              <span>Plan limit: <strong className="font-bold text-text-primary">5MB</strong>. Upgrade to unlock <strong className="font-bold text-text-primary">50MB</strong>.</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {errorMsg && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-[#E74C3C]/10 border border-[#E74C3C]/30 text-[#E74C3C] text-sm">
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-error/10 border border-error/30 text-error text-sm">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)} className="ml-auto text-[#E74C3C] hover:text-white"><X className="w-4 h-4" /></button>
+          <button onClick={() => setErrorMsg(null)} className="ml-auto text-error hover:text-text-primary"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -577,10 +590,10 @@ export default function DashboardPage() {
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-6 ${
+          className={`border-2 border-dashed rounded-2xl p-8 md:p-16 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-6 ${
             dragActive 
               ? 'border-gold bg-gold/5 shadow-2xl shadow-gold/5' 
-              : 'border-[#1E2130] bg-[#0E1117] hover:border-gold/30 hover:shadow-lg hover:shadow-gold/[0.02]'
+              : 'border-border bg-card hover:border-gold/30 hover:shadow-lg hover:shadow-gold/[0.02]'
           }`}
         >
           <input
@@ -591,15 +604,15 @@ export default function DashboardPage() {
             className="hidden"
           />
           
-          <div className="w-16 h-16 rounded-2xl bg-[#141720] border border-[#1E2130] flex items-center justify-center text-gold shadow-md">
+          <div className="w-16 h-16 rounded-2xl bg-card2 border border-border flex items-center justify-center text-gold shadow-md">
             {parsing ? <RefreshCw className="w-7 h-7 animate-spin text-gold-light" /> : <Upload className="w-7 h-7" />}
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-heading text-lg font-bold">
+            <h3 className="font-heading text-base md:text-lg font-bold">
               {parsing ? 'Parsing Spreadsheet...' : 'Select or drag your file'}
             </h3>
-            <p className="text-xs text-[#6B7280] font-light max-w-sm">
+            <p className="text-[11px] md:text-xs text-text-muted font-light max-w-sm">
               Supports CSV, Microsoft Excel (XLS, XLSX), or JSON arrays. No data leaves your computer during parsing.
             </p>
           </div>
@@ -609,15 +622,15 @@ export default function DashboardPage() {
       {/* Parsed Preview Table & Action Controls */}
       {parsedData.length > 0 && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#0E1117] p-5 rounded-2xl border border-[#1E2130]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 md:p-5 rounded-2xl border border-border">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center text-gold">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
               <div>
                 <h4 className="font-semibold text-sm truncate max-w-xs">{file?.name || 'Imported Sheet'}</h4>
-                <p className="text-xs text-[#6B7280] font-light mt-1">
-                  Rows: <strong className="text-white">{parsedData.length}</strong> &bull; Columns: <strong className="text-white">{columns.length}</strong>
+                <p className="text-xs text-text-muted font-light mt-1">
+                  Rows: <strong className="text-text-primary">{parsedData.length}</strong> &bull; Columns: <strong className="text-text-primary">{columns.length}</strong>
                 </p>
               </div>
             </div>
@@ -625,7 +638,7 @@ export default function DashboardPage() {
             <div className="flex gap-3 w-full sm:w-auto">
               <button 
                 onClick={resetUpload}
-                className="w-full sm:w-auto px-5 py-3 border border-[#1E2130] bg-[#141720] text-xs font-bold uppercase tracking-wider rounded-xl text-red-400 hover:bg-red-500/5 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-5 py-3 border border-border bg-card2 text-xs font-bold uppercase tracking-wider rounded-xl text-red-400 hover:bg-red-500/5 transition flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" /> Reset
               </button>
@@ -639,20 +652,20 @@ export default function DashboardPage() {
           </div>
 
           {/* Schema Metadata tree */}
-          <div className="bg-[#0E1117] border border-[#1E2130] rounded-2xl p-6">
-            <h3 className="font-heading text-lg font-bold mb-4 flex items-center gap-2">
+          <div className="bg-card border border-border rounded-2xl p-4 md:p-6">
+            <h3 className="font-heading text-base md:text-lg font-bold mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-gold-light" /> Inferred Schema Columns
             </h3>
             
             <div className="flex flex-wrap gap-3">
               {columns.map((col, idx) => (
-                <div key={idx} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#141720] border border-[#1E2130] text-xs">
-                  <span className="font-bold text-[#F5F0E8]">{col.name}</span>
+                <div key={idx} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-card2 border border-border text-xs">
+                  <span className="font-bold text-text-primary">{col.name}</span>
                   <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
                     col.type === 'Number' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                    col.type === 'Date' ? 'bg-purple/10 text-[#8B6FBB] border border-purple/20' :
+                    col.type === 'Date' ? 'bg-purple/10 text-purple border border-purple/20' :
                     col.type === 'Boolean' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                    'bg-[#0E1117] text-[#6B7280] border border-[#1E2130]'
+                    'bg-card text-text-muted border border-border'
                   }`}>
                     {col.type}
                   </span>
@@ -662,17 +675,22 @@ export default function DashboardPage() {
           </div>
 
           {/* preview Table */}
-          <div className="bg-[#0E1117] border border-[#1E2130] rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-[#1E2130]">
-              <h3 className="font-heading text-lg font-bold">Data Preview (First 20 Rows)</h3>
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-border">
+              <h3 className="font-heading text-base md:text-lg font-bold">Data Preview (First 20 Rows)</h3>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#141720] border-b border-[#1E2130]">
+                  <tr className="bg-card2 border-b border-border">
                     {columns.map((col, idx) => (
-                      <th key={idx} className="p-4 text-xs font-semibold uppercase tracking-wider text-[#6B7280] font-mono whitespace-nowrap">
+                      <th 
+                        key={idx} 
+                        className={`p-4 text-xs font-semibold uppercase tracking-wider text-text-muted font-mono whitespace-nowrap ${
+                          idx === 0 ? 'sticky left-0 bg-card2 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]' : ''
+                        }`}
+                      >
                         {col.name}
                       </th>
                     ))}
@@ -680,10 +698,15 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {parsedData.slice(0, 20).map((row, rIdx) => (
-                    <tr key={rIdx} className="border-b border-[#1E2130]/30 hover:bg-[#141720]/10 transition">
+                    <tr key={rIdx} className="border-b border-border/30 hover:bg-card2/10 transition">
                       {columns.map((col, cIdx) => (
-                        <td key={cIdx} className="p-4 text-xs text-[#F5F0E8] truncate max-w-[200px]">
-                          {row[col.name] !== null && row[col.name] !== undefined ? String(row[col.name]) : <span className="text-[#6B7280] italic">null</span>}
+                        <td 
+                          key={cIdx} 
+                          className={`p-4 text-xs text-text-primary truncate max-w-[200px] ${
+                            cIdx === 0 ? 'sticky left-0 bg-card z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]' : ''
+                          }`}
+                        >
+                          {row[col.name] !== null && row[col.name] !== undefined ? String(row[col.name]) : <span className="text-text-muted italic">null</span>}
                         </td>
                       ))}
                     </tr>
@@ -714,11 +737,11 @@ export default function DashboardPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl bg-[#0E1117] border-l border-[#1E2130] h-full flex flex-col justify-between shadow-2xl z-10"
+              className="relative w-full max-w-2xl bg-card border-l border-border h-full flex flex-col justify-between shadow-2xl z-10"
             >
               
               {/* Wizard Header */}
-              <div className="p-6 border-b border-[#1E2130] flex justify-between items-center">
+              <div className="p-6 border-b border-border flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-gold-light" />
                   <h3 className="font-heading text-xl font-bold">Data Cleaning Wizard</h3>
@@ -726,27 +749,27 @@ export default function DashboardPage() {
                 <button 
                   onClick={() => setShowWizard(false)}
                   disabled={saving}
-                  className="p-1 rounded-lg text-[#6B7280] hover:text-[#F5F0E8] hover:bg-[#141720] transition disabled:opacity-50"
+                  className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-card2 transition disabled:opacity-50"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Steps indicators */}
-              <div className="px-6 py-4 bg-[#141720]/50 border-b border-[#1E2130] flex items-center justify-between text-xs font-semibold text-[#6B7280]">
+              <div className="px-6 py-4 bg-card2/50 border-b border-border flex items-center justify-between text-xs font-semibold text-text-muted overflow-x-auto whitespace-nowrap">
                 {["Basic", "Missing Values", "Columns", "Dates", "Verify"].map((n, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
+                  <div key={i} className="flex items-center gap-1.5 shrink-0">
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
                       wizardStep === i + 1 
-                        ? 'bg-gold text-[#080A0F] font-bold' 
+                        ? 'bg-gold text-background font-bold' 
                         : wizardStep > i + 1 
                           ? 'bg-gold/10 text-gold-light border border-gold/30' 
-                          : 'bg-[#141720] text-[#6B7280] border border-[#1E2130]'
+                          : 'bg-card2 text-text-muted border border-border'
                     }`}>
                       {wizardStep > i + 1 ? <Check className="w-3 h-3" /> : i + 1}
                     </span>
-                    <span className={wizardStep === i + 1 ? 'text-white' : ''}>{n}</span>
-                    {i < 4 && <ChevronRight className="w-3.5 h-3.5 text-[#1E2130]" />}
+                    <span className={wizardStep === i + 1 ? 'text-text-primary' : ''}>{n}</span>
+                    {i < 4 && <ChevronRight className="w-3.5 h-3.5 text-border" />}
                   </div>
                 ))}
               </div>
@@ -759,52 +782,52 @@ export default function DashboardPage() {
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <h4 className="font-heading text-lg font-bold">Basic Correction Parameters</h4>
-                      <p className="text-xs text-[#6B7280] font-light">Select standard clean operations to run across the entire sheet layout.</p>
+                      <p className="text-xs text-text-muted font-light">Select standard clean operations to run across the entire sheet layout.</p>
                     </div>
 
                     <div className="space-y-4">
-                      <label className="flex items-center gap-3 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/50 cursor-pointer hover:border-gold/30 transition">
+                      <label className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card2/50 cursor-pointer hover:border-gold/30 transition">
                         <input
                           type="checkbox"
                           checked={removeDuplicates}
                           onChange={(e) => setRemoveDuplicates(e.target.checked)}
-                          className="w-4 h-4 rounded text-gold bg-[#0E1117] border-[#1E2130] focus:ring-gold"
+                          className="w-4 h-4 rounded text-gold bg-card border-border focus:ring-gold"
                         />
                         <div>
                           <div className="text-sm font-semibold">Remove Duplicate Rows</div>
-                          <div className="text-[10px] text-[#6B7280] mt-0.5">Identifies identical cell chains and retains only the first instance.</div>
+                          <div className="text-[10px] text-text-muted mt-0.5">Identifies identical cell chains and retains only the first instance.</div>
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-3 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/50 cursor-pointer hover:border-gold/30 transition">
+                      <label className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card2/50 cursor-pointer hover:border-gold/30 transition">
                         <input
                           type="checkbox"
                           checked={removeEmptyRows}
                           onChange={(e) => setRemoveEmptyRows(e.target.checked)}
-                          className="w-4 h-4 rounded text-gold bg-[#0E1117] border-[#1E2130] focus:ring-gold"
+                          className="w-4 h-4 rounded text-gold bg-card border-border focus:ring-gold"
                         />
                         <div>
                           <div className="text-sm font-semibold">Remove Completely Empty Rows</div>
-                          <div className="text-[10px] text-[#6B7280] mt-0.5">Drops rows containing nothing but nulls, tabs, or whitespaces.</div>
+                          <div className="text-[10px] text-text-muted mt-0.5">Drops rows containing nothing but nulls, tabs, or whitespaces.</div>
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-3 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/50 cursor-pointer hover:border-gold/30 transition">
+                      <label className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card2/50 cursor-pointer hover:border-gold/30 transition">
                         <input
                           type="checkbox"
                           checked={trimWhitespace}
                           onChange={(e) => setTrimWhitespace(e.target.checked)}
-                          className="w-4 h-4 rounded text-gold bg-[#0E1117] border-[#1E2130] focus:ring-gold"
+                          className="w-4 h-4 rounded text-gold bg-card border-border focus:ring-gold"
                         />
                         <div>
                           <div className="text-sm font-semibold">Trim Trailing Whitespaces</div>
-                          <div className="text-[10px] text-[#6B7280] mt-0.5">Removes double spaces, starting tabs, or trailing breaks from strings.</div>
+                          <div className="text-[10px] text-text-muted mt-0.5">Removes double spaces, starting tabs, or trailing breaks from strings.</div>
                         </div>
                       </label>
 
-                      <div className="space-y-2 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/50">
+                      <div className="space-y-2 p-4 rounded-xl border border-border bg-card2/50">
                         <div className="text-sm font-semibold">Standardise Text Case</div>
-                        <div className="text-[10px] text-[#6B7280] mb-2">Re-formats all string values into a consistent capitalization.</div>
+                        <div className="text-[10px] text-text-muted mb-2">Re-formats all string values into a consistent capitalization.</div>
                         
                         <div className="grid grid-cols-4 gap-2">
                           {['none', 'upper', 'lower', 'title'].map((c) => (
@@ -815,7 +838,7 @@ export default function DashboardPage() {
                               className={`py-2 text-[10px] uppercase font-bold tracking-wider rounded border transition ${
                                 caseStandard === c 
                                   ? 'border-gold text-gold bg-gold/5' 
-                                  : 'border-[#1E2130] text-[#6B7280] hover:text-[#F5F0E8] hover:border-[#1E2130]/80'
+                                  : 'border-border text-text-muted hover:text-text-primary hover:border-border/80'
                               }`}
                             >
                               {c}
@@ -832,15 +855,15 @@ export default function DashboardPage() {
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <h4 className="font-heading text-lg font-bold">Interpolation of Missing Values</h4>
-                      <p className="text-xs text-[#6B7280] font-light">Determine actions when a cell is blank or null. Configure per column:</p>
+                      <p className="text-xs text-text-muted font-light">Determine actions when a cell is blank or null. Configure per column:</p>
                     </div>
 
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                       {columns.map((col) => (
-                        <div key={col.name} className="p-4 rounded-xl border border-[#1E2130] bg-[#141720]/30 space-y-3">
+                        <div key={col.name} className="p-4 rounded-xl border border-border bg-card2/30 space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-semibold truncate">{col.name}</span>
-                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 bg-[#0E1117] text-[#6B7280] border border-[#1E2130] rounded">
+                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 bg-card text-text-muted border border-border rounded">
                               {col.type}
                             </span>
                           </div>
@@ -854,7 +877,7 @@ export default function DashboardPage() {
                                 className={`py-1.5 text-[9px] uppercase font-bold tracking-wider rounded border transition ${
                                   missingMethods[col.name] === m 
                                     ? 'border-gold text-gold bg-gold/5' 
-                                    : 'border-[#1E2130] text-[#6B7280] hover:text-[#F5F0E8]'
+                                    : 'border-border text-text-muted hover:text-text-primary'
                                 }`}
                               >
                                 {m}
@@ -868,7 +891,7 @@ export default function DashboardPage() {
                               placeholder="Insert replacement value"
                               value={customFills[col.name] || ''}
                               onChange={(e) => setCustomFills(prev => ({ ...prev, [col.name]: e.target.value }))}
-                              className="w-full px-3 py-2 bg-[#0E1117] border border-[#1E2130] rounded-lg text-xs focus:outline-none focus:border-gold/50 text-[#F5F0E8]"
+                              className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:border-gold/50 text-text-primary"
                             />
                           )}
                         </div>
@@ -882,7 +905,7 @@ export default function DashboardPage() {
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <h4 className="font-heading text-lg font-bold">Column Fields & Cast Mappings</h4>
-                      <p className="text-xs text-[#6B7280] font-light">Rename keys, delete columns, or cast types to standard formats.</p>
+                      <p className="text-xs text-text-muted font-light">Rename keys, delete columns, or cast types to standard formats.</p>
                     </div>
 
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
@@ -890,7 +913,7 @@ export default function DashboardPage() {
                         <div 
                           key={col.name} 
                           className={`p-4 rounded-xl border transition-opacity ${
-                            deletedColumns[col.name] ? 'opacity-40 border-red-500/20 bg-red-500/[0.02]' : 'border-[#1E2130] bg-[#141720]/30'
+                            deletedColumns[col.name] ? 'opacity-40 border-red-500/20 bg-red-500/[0.02]' : 'border-border bg-card2/30'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-3">
@@ -899,32 +922,32 @@ export default function DashboardPage() {
                                 type="checkbox"
                                 checked={deletedColumns[col.name] || false}
                                 onChange={(e) => setDeletedColumns(prev => ({ ...prev, [col.name]: e.target.checked }))}
-                                className="w-3.5 h-3.5 rounded text-red-500 bg-[#0E1117] border-[#1E2130] focus:ring-red-500"
+                                className="w-3.5 h-3.5 rounded text-red-500 bg-card border-border focus:ring-red-500"
                               />
                               <span className={deletedColumns[col.name] ? 'text-red-400 line-through' : ''}>Delete Column</span>
                             </label>
                             
-                            <span className="text-[10px] text-[#6B7280]">Original: <strong className="text-white font-mono">{col.name}</strong></span>
+                            <span className="text-[10px] text-text-muted">Original: <strong className="text-text-primary font-mono">{col.name}</strong></span>
                           </div>
 
                           {!deletedColumns[col.name] && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-1">
-                                <label className="text-[9px] text-[#6B7280] uppercase tracking-wider">Rename Column Key</label>
+                                <label className="text-[9px] text-text-muted uppercase tracking-wider">Rename Column Key</label>
                                 <input
                                   type="text"
                                   value={columnRenames[col.name] || ''}
                                   onChange={(e) => setColumnRenames(prev => ({ ...prev, [col.name]: e.target.value }))}
-                                  className="w-full px-3 py-2 bg-[#0E1117] border border-[#1E2130] rounded-lg text-xs focus:outline-none focus:border-gold/50 text-[#F5F0E8]"
+                                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:border-gold/50 text-text-primary"
                                 />
                               </div>
 
                               <div className="space-y-1">
-                                <label className="text-[9px] text-[#6B7280] uppercase tracking-wider">Casting Data Type</label>
+                                <label className="text-[9px] text-text-muted uppercase tracking-wider">Casting Data Type</label>
                                 <select
                                   value={typeCasts[col.name] || col.type}
                                   onChange={(e) => setTypeCasts(prev => ({ ...prev, [col.name]: e.target.value as any }))}
-                                  className="w-full px-3 py-2 bg-[#0E1117] border border-[#1E2130] rounded-lg text-xs focus:outline-none focus:border-gold/50 text-[#F5F0E8]"
+                                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:border-gold/50 text-text-primary"
                                 >
                                   <option value="Text">Text</option>
                                   <option value="Number">Number</option>
@@ -945,36 +968,36 @@ export default function DashboardPage() {
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <h4 className="font-heading text-lg font-bold">Standardise Date Metrics</h4>
-                      <p className="text-xs text-[#6B7280] font-light">Auto-detect values, map into standard ISO strings, or parse subfields.</p>
+                      <p className="text-xs text-text-muted font-light">Auto-detect values, map into standard ISO strings, or parse subfields.</p>
                     </div>
 
-                    <div className="space-y-4 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/30">
+                    <div className="space-y-4 p-4 rounded-xl border border-border bg-card2/30">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Select Main Date Column</label>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Select Main Date Column</label>
                         <select
                           value={dateField}
                           onChange={(e) => setDateField(e.target.value)}
-                          className="w-full px-3 py-2.5 bg-[#0E1117] border border-[#1E2130] rounded-lg text-xs focus:outline-none focus:border-gold/50 text-[#F5F0E8]"
+                          className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-xs focus:outline-none focus:border-gold/50 text-text-primary"
                         >
                           <option value="">-- No Date Selected --</option>
                           {columns.filter(c => !deletedColumns[c.name]).map((col) => (
                             <option key={col.name} value={col.name}>{col.name}</option>
                           ))}
                         </select>
-                        <p className="text-[10px] text-[#6B7280]">We will auto-format strings inside this field into ISO dates (e.g. 2026-06-14T00:00:00Z).</p>
+                        <p className="text-[10px] text-text-muted">We will auto-format strings inside this field into ISO dates (e.g. 2026-06-14T00:00:00Z).</p>
                       </div>
 
                       {dateField && (
-                        <label className="flex items-start gap-3 p-4 rounded-xl border border-[#1E2130]/50 bg-[#0E1117]/50 cursor-pointer hover:border-gold/30 transition">
+                        <label className="flex items-start gap-3 p-4 rounded-xl border border-border/50 bg-card/50 cursor-pointer hover:border-gold/30 transition">
                           <input
                             type="checkbox"
                             checked={extractDateParts}
                             onChange={(e) => setExtractDateParts(e.target.checked)}
-                            className="w-4 h-4 rounded text-gold bg-[#0E1117] border-[#1E2130] focus:ring-gold mt-0.5"
+                            className="w-4 h-4 rounded text-gold bg-card border-border focus:ring-gold mt-0.5"
                           />
                           <div>
                             <div className="text-sm font-semibold">Extract Sub-Date Fields</div>
-                            <div className="text-[10px] text-[#6B7280] mt-0.5">Creates new columns for Year, Month, and Day (e.g. [ColumnName]_Year, etc.) which is excellent for charts groupings.</div>
+                            <div className="text-[10px] text-text-muted mt-0.5">Creates new columns for Year, Month, and Day (e.g. [ColumnName]_Year, etc.) which is excellent for charts groupings.</div>
                           </div>
                         </label>
                       )}
@@ -985,26 +1008,26 @@ export default function DashboardPage() {
                 {/* STEP 5: Clean Results Verify */}
                 {wizardStep === 5 && cleaningStats && (
                   <div className="space-y-6 text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto text-green-400">
+                    <div className="w-16 h-16 rounded-full bg-success/10 border border-success/20 flex items-center justify-center mx-auto text-success">
                       <Check className="w-8 h-8" />
                     </div>
 
                     <div className="space-y-2">
                       <h4 className="font-heading text-2xl font-bold">Data Cleaned Successfully!</h4>
-                      <p className="text-xs text-[#6B7280] font-light">All operations have run client-side. Compare the metrics below:</p>
+                      <p className="text-xs text-text-muted font-light">All operations have run client-side. Compare the metrics below:</p>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 max-w-md mx-auto text-left pt-6">
-                      <div className="p-4 rounded-xl bg-[#141720] border border-[#1E2130]">
-                        <div className="text-[10px] text-[#6B7280] uppercase tracking-wider mb-1">Rows Before</div>
+                      <div className="p-4 rounded-xl bg-card2 border border-border">
+                        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Rows Before</div>
                         <div className="text-xl font-bold">{cleaningStats.rowsBefore}</div>
                       </div>
-                      <div className="p-4 rounded-xl bg-[#141720] border border-[#1E2130]">
-                        <div className="text-[10px] text-[#6B7280] uppercase tracking-wider mb-1">Rows Cleansed</div>
+                      <div className="p-4 rounded-xl bg-card2 border border-border">
+                        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Rows Cleansed</div>
                         <div className="text-xl font-bold text-gold">{cleaningStats.rowsAfter}</div>
                       </div>
-                      <div className="p-4 rounded-xl bg-[#141720] border border-red-500/10 bg-red-500/[0.01]">
-                        <div className="text-[10px] text-[#6B7280] uppercase tracking-wider mb-1">Dropped Rows</div>
+                      <div className="p-4 rounded-xl bg-card2 border border-red-500/10 bg-red-500/[0.01]">
+                        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Dropped Rows</div>
                         <div className="text-xl font-bold text-red-400">{cleaningStats.deleted}</div>
                       </div>
                     </div>
@@ -1014,7 +1037,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Wizard Footer */}
-              <div className="p-6 border-t border-[#1E2130] bg-[#141720]/20 flex justify-between items-center">
+              <div className="p-6 border-t border-border bg-card2/20 flex justify-between items-center">
                 
                 {wizardStep < 5 ? (
                   <>
@@ -1022,7 +1045,7 @@ export default function DashboardPage() {
                       type="button"
                       disabled={wizardStep === 1 || saving}
                       onClick={() => setWizardStep(wizardStep - 1)}
-                      className="px-4 py-2.5 text-xs font-semibold tracking-wider uppercase border border-[#1E2130] rounded-xl hover:bg-[#141720] transition flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-4 py-2.5 text-xs font-semibold tracking-wider uppercase border border-border rounded-xl hover:bg-card2 transition flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed text-text-primary"
                     >
                       <ChevronLeft className="w-4 h-4" /> Back
                     </button>
@@ -1051,7 +1074,7 @@ export default function DashboardPage() {
                       type="button"
                       disabled={saving}
                       onClick={() => setWizardStep(1)}
-                      className="px-4 py-2.5 text-xs font-semibold tracking-wider uppercase border border-[#1E2130] rounded-xl hover:bg-[#141720] transition flex items-center gap-1.5 disabled:opacity-30"
+                      className="px-4 py-2.5 text-xs font-semibold tracking-wider uppercase border border-border rounded-xl hover:bg-card2 transition flex items-center gap-1.5 disabled:opacity-30 text-text-primary"
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> Re-configure
                     </button>
@@ -1074,10 +1097,10 @@ export default function DashboardPage() {
               </div>
 
             </motion.div>
+
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

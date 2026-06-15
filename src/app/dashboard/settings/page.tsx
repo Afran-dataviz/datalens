@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useTheme } from 'next-themes';
 import { 
   User, 
   CreditCard, 
@@ -18,6 +19,10 @@ const supabase = createClient();
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'appearance'>('profile');
   
+  // Theme state
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
   // Profile state
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -34,14 +39,13 @@ export default function SettingsPage() {
   const [plan, setPlan] = useState('free');
   const [subLoading, setSubLoading] = useState(false);
 
-  // Appearance state
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-
   // Messages
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+
     // Initial fetch user
     const fetchUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,12 +80,6 @@ export default function SettingsPage() {
     };
     
     fetchUserData();
-
-    // Check current theme
-    if (typeof window !== 'undefined') {
-      const isLight = document.documentElement.classList.contains('light');
-      setTheme(isLight ? 'light' : 'dark');
-    }
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -150,17 +148,6 @@ export default function SettingsPage() {
     }
   };
 
-  const toggleTheme = (newTheme: 'dark' | 'light') => {
-    setTheme(newTheme);
-    if (newTheme === 'light') {
-      document.documentElement.classList.add('light');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-    }
-  };
-
   const handleSubscriptionAction = async () => {
     setSubLoading(true);
     setErrorMsg(null);
@@ -202,44 +189,46 @@ export default function SettingsPage() {
     }
   };
 
+  const currentTheme = theme === 'system' ? resolvedTheme : theme;
+
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12 w-full space-y-10">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-12 w-full space-y-6 md:space-y-8">
       
-      <div className="flex justify-between items-center pb-6 border-b border-[#1E2130]">
+      <div className="flex justify-between items-center pb-6 border-b border-border">
         <div>
-          <h1 className="font-heading text-3xl font-bold">Account Settings</h1>
-          <p className="text-sm text-[#6B7280] font-light mt-1">Configure profile details, subscription pricing tiers, and custom UI parameters.</p>
+          <h1 className="font-heading text-2xl md:text-3xl font-bold text-text-primary">Account Settings</h1>
+          <p className="text-xs md:text-sm text-text-muted font-light mt-1">Configure profile details, subscription pricing tiers, and custom UI parameters.</p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 p-1.5 rounded-xl bg-[#0E1117] border border-[#1E2130] w-full md:w-fit">
+      {/* Tabs - Horizontally scrollable on mobile */}
+      <div className="flex overflow-x-auto whitespace-nowrap p-1.5 rounded-xl bg-card border border-border w-full md:w-fit max-w-full scrollbar-none">
         <button
           onClick={() => { setActiveTab('profile'); setErrorMsg(null); setSuccessMsg(null); }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition ${
+          className={`flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition shrink-0 ${
             activeTab === 'profile' 
-              ? 'bg-[#141720] text-gold-light border border-[#1E2130]' 
-              : 'text-[#6B7280] hover:text-[#F5F0E8]'
+              ? 'bg-card2 text-gold border border-border' 
+              : 'text-text-muted hover:text-text-primary'
           }`}
         >
           <User className="w-4 h-4" /> Profile & Security
         </button>
         <button
           onClick={() => { setActiveTab('subscription'); setErrorMsg(null); setSuccessMsg(null); }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition ${
+          className={`flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition shrink-0 ${
             activeTab === 'subscription' 
-              ? 'bg-[#141720] text-gold-light border border-[#1E2130]' 
-              : 'text-[#6B7280] hover:text-[#F5F0E8]'
+              ? 'bg-card2 text-gold border border-border' 
+              : 'text-text-muted hover:text-text-primary'
           }`}
         >
           <CreditCard className="w-4 h-4" /> Subscription Plan
         </button>
         <button
           onClick={() => { setActiveTab('appearance'); setErrorMsg(null); setSuccessMsg(null); }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition ${
+          className={`flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-xs uppercase font-bold tracking-wider transition shrink-0 ${
             activeTab === 'appearance' 
-              ? 'bg-[#141720] text-gold-light border border-[#1E2130]' 
-              : 'text-[#6B7280] hover:text-[#F5F0E8]'
+              ? 'bg-card2 text-gold border border-border' 
+              : 'text-text-muted hover:text-text-primary'
           }`}
         >
           <Sun className="w-4 h-4" /> Visual Theme
@@ -248,85 +237,85 @@ export default function SettingsPage() {
 
       {/* Info Messages */}
       {errorMsg && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-[#E74C3C]/10 border border-[#E74C3C]/30 text-[#E74C3C] text-sm">
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-error/10 border border-error/30 text-error text-sm">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-[#2ECC71]/10 border border-[#2ECC71]/30 text-[#2ECC71] text-sm">
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-sm">
           <CheckCircle className="w-5 h-5 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* Tab Panels */}
-      <div className="bg-[#0E1117] border border-[#1E2130] rounded-2xl p-6 md:p-8">
+      <div className="bg-card border border-border rounded-2xl p-4 md:p-8">
         
         {/* Profile Tab */}
         {activeTab === 'profile' && (
           <div className="space-y-10">
             {/* Form Profile */}
             <form onSubmit={handleUpdateProfile} className="space-y-6">
-              <h3 className="font-heading text-xl font-bold border-b border-[#1E2130]/30 pb-3">Edit Profile</h3>
+              <h3 className="font-heading text-lg md:text-xl font-bold border-b border-border/30 pb-3 text-text-primary">Edit Profile</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Full Name</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Full Name</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
                     disabled={profileLoading}
-                    className="w-full px-4 py-3 bg-[#141720] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-card2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Avatar URL</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Avatar URL</label>
                   <input
                     type="url"
                     placeholder="https://example.com/avatar.jpg"
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
                     disabled={profileLoading}
-                    className="w-full px-4 py-3 bg-[#141720] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-card2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Email Address</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Email Address</label>
                 <input
                   type="email"
                   value={userEmail}
                   disabled
-                  className="w-full px-4 py-3 bg-[#141720] border border-[#1E2130]/50 text-sm text-[#6B7280] rounded-xl cursor-not-allowed opacity-60"
+                  className="w-full px-4 py-3 bg-card2/50 border border-border/50 text-sm text-text-muted rounded-xl cursor-not-allowed opacity-60"
                 />
-                <span className="text-[10px] text-[#6B7280] block">To edit your registered email, contact customer support.</span>
+                <span className="text-[10px] text-text-muted block">To edit your registered email, contact customer support.</span>
               </div>
 
               <button
                 type="submit"
                 disabled={profileLoading}
-                className="btn-gold px-6 py-3.5 text-xs font-bold uppercase tracking-wider hover:opacity-95 disabled:opacity-50 transition"
+                className="w-full sm:w-auto btn-gold px-6 py-3.5 text-xs font-bold uppercase tracking-wider hover:opacity-95 disabled:opacity-50 transition"
               >
                 {profileLoading ? 'Saving changes...' : 'Save Profile'}
               </button>
             </form>
 
             {/* Form Security */}
-            <form onSubmit={handleChangePassword} className="space-y-6 pt-6 border-t border-[#1E2130]/50">
+            <form onSubmit={handleChangePassword} className="space-y-6 pt-6 border-t border-border/50">
               <div className="flex items-center gap-2 mb-2">
-                <Lock className="w-5 h-5 text-gold-light" />
-                <h3 className="font-heading text-xl font-bold">Change Password</h3>
+                <Lock className="w-5 h-5 text-gold" />
+                <h3 className="font-heading text-lg md:text-xl font-bold text-text-primary">Change Password</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">New Password</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">New Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
@@ -334,12 +323,12 @@ export default function SettingsPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={passwordLoading}
-                    className="w-full px-4 py-3 bg-[#141720] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-card2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Confirm Password</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Confirm Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
@@ -347,7 +336,7 @@ export default function SettingsPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     disabled={passwordLoading}
-                    className="w-full px-4 py-3 bg-[#141720] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-card2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -355,7 +344,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider border border-[#1E2130] rounded-xl bg-[#141720] hover:bg-[#1E2130] transition disabled:opacity-50"
+                className="w-full sm:w-auto px-6 py-3.5 text-xs font-bold uppercase tracking-wider border border-border rounded-xl bg-card2 hover:bg-border transition disabled:opacity-50 text-text-primary"
               >
                 {passwordLoading ? 'Updating...' : 'Update Password'}
               </button>
@@ -366,23 +355,23 @@ export default function SettingsPage() {
         {/* Subscription Tab */}
         {activeTab === 'subscription' && (
           <div className="space-y-8">
-            <h3 className="font-heading text-xl font-bold border-b border-[#1E2130]/30 pb-3">Manage Plan</h3>
+            <h3 className="font-heading text-lg md:text-xl font-bold border-b border-border/30 pb-3 text-text-primary">Manage Plan</h3>
             
             {/* Status card */}
-            <div className="p-6 rounded-2xl bg-[#141720] border border-[#1E2130] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="p-4 md:p-6 rounded-2xl bg-card2 border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="space-y-2">
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider font-mono">Current Subscription</div>
+                <div className="text-xs text-text-muted uppercase tracking-wider font-mono">Current Subscription</div>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold capitalize font-heading">{plan} Plan</span>
+                  <span className="text-2xl font-bold capitalize font-heading text-text-primary">{plan} Plan</span>
                   <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${
                     plan === 'pro' 
-                      ? 'bg-gold/10 text-gold-light border border-gold/20' 
-                      : 'bg-[#0E1117] text-[#6B7280] border border-[#1E2130]'
+                      ? 'bg-gold/10 text-gold border border-gold/20' 
+                      : 'bg-card text-text-muted border border-border'
                   }`}>
                     {plan === 'pro' ? 'Premium Active' : 'Basic Member'}
                   </span>
                 </div>
-                <p className="text-xs text-[#6B7280] font-light max-w-md">
+                <p className="text-xs text-text-muted font-light max-w-md">
                   {plan === 'pro' 
                     ? 'Thank you for supporting DataLens. You have unlimited file parses, full AI streaming chat, and public sharing permissions.'
                     : 'Upgrade to DataLens Pro for unlimited file uploads, custom charting (Scatter & Heatmaps), pdf export reports, and Groq streaming chat.'
@@ -393,9 +382,9 @@ export default function SettingsPage() {
               <button
                 onClick={handleSubscriptionAction}
                 disabled={subLoading}
-                className={`px-6 py-3.5 text-xs font-bold uppercase tracking-wider rounded-[10px] shrink-0 transition ${
+                className={`w-full md:w-auto px-6 py-3.5 text-xs font-bold uppercase tracking-wider rounded-[10px] shrink-0 transition ${
                   plan === 'pro'
-                    ? 'border border-[#1E2130] bg-[#0E1117] hover:bg-[#1E2130] text-[#F5F0E8]'
+                    ? 'border border-border bg-card hover:bg-border text-text-primary'
                     : 'btn-gold shadow-lg shadow-gold/15'
                 }`}
               >
@@ -410,8 +399,8 @@ export default function SettingsPage() {
               <div className="p-4 rounded-xl border border-gold/15 bg-gold/5 flex gap-3 text-xs text-gold-light leading-relaxed">
                 <ShieldCheck className="w-5 h-5 shrink-0" />
                 <div>
-                  <span className="font-bold uppercase tracking-wide mr-1">Stripe Test Mode Enabled:</span>
-                  You can test the upgrade transaction safely. Use the card number <code className="font-mono bg-gold/10 px-1 py-0.5 rounded text-white font-bold">4242 4242 4242 4242</code> with any future expiry date and any CVC.
+                  <span className="font-bold uppercase tracking-wide mr-1 text-gold">Stripe Test Mode Enabled:</span>
+                  You can test the upgrade transaction safely. Use the card number <code className="font-mono bg-gold/10 px-1 py-0.5 rounded text-text-primary font-bold">4242 4242 4242 4242</code> with any future expiry date and any CVC.
                 </div>
               </div>
             )}
@@ -421,42 +410,46 @@ export default function SettingsPage() {
         {/* Appearance Tab */}
         {activeTab === 'appearance' && (
           <div className="space-y-6">
-            <h3 className="font-heading text-xl font-bold border-b border-[#1E2130]/30 pb-3">Visual Customisation</h3>
+            <h3 className="font-heading text-lg md:text-xl font-bold border-b border-border/30 pb-3 text-text-primary">Visual Customisation</h3>
             
             <div className="space-y-4">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Select App Theme</label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Select App Theme</label>
               
-              <div className="grid grid-cols-2 gap-4 max-w-md">
-                <button
-                  onClick={() => toggleTheme('dark')}
-                  className={`p-5 rounded-2xl border text-left flex items-center gap-4 transition ${
-                    theme === 'dark'
-                      ? 'border-gold bg-[#141720] text-gold-light'
-                      : 'border-[#1E2130] bg-[#141720]/30 text-[#6B7280] hover:text-[#F5F0E8] hover:border-[#1E2130]/80'
-                  }`}
-                >
-                  <Moon className="w-6 h-6 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-sm">Obsidian Dark</div>
-                    <div className="text-[10px] opacity-75 mt-0.5">Bloomberg luxury theme</div>
-                  </div>
-                </button>
+              {!mounted ? (
+                <div className="h-24 bg-card2/50 animate-pulse rounded-2xl max-w-md" />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={`p-5 rounded-2xl border text-left flex items-center gap-4 transition ${
+                      currentTheme === 'dark'
+                        ? 'border-gold bg-card2 text-gold'
+                        : 'border-border bg-card2/30 text-text-muted hover:text-text-primary hover:border-border/80'
+                    }`}
+                  >
+                    <Moon className="w-6 h-6 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-sm">Obsidian Dark</div>
+                      <div className="text-[10px] opacity-75 mt-0.5">Bloomberg luxury theme</div>
+                    </div>
+                  </button>
 
-                <button
-                  onClick={() => toggleTheme('light')}
-                  className={`p-5 rounded-2xl border text-left flex items-center gap-4 transition ${
-                    theme === 'light'
-                      ? 'border-gold bg-[#141720] text-gold-light'
-                      : 'border-[#1E2130] bg-[#141720]/30 text-[#6B7280] hover:text-[#F5F0E8] hover:border-[#1E2130]/80'
-                  }`}
-                >
-                  <Sun className="w-6 h-6 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-sm">Luxury Light</div>
-                    <div className="text-[10px] opacity-75 mt-0.5">High-contrast clean style</div>
-                  </div>
-                </button>
-              </div>
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={`p-5 rounded-2xl border text-left flex items-center gap-4 transition ${
+                      currentTheme === 'light'
+                        ? 'border-gold bg-card2 text-gold'
+                        : 'border-border bg-card2/30 text-text-muted hover:text-text-primary hover:border-border/80'
+                    }`}
+                  >
+                    <Sun className="w-6 h-6 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-sm">Luxury Light</div>
+                      <div className="text-[10px] opacity-75 mt-0.5">High-contrast clean style</div>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -10,23 +10,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#080A0F',
-        card: '#0E1117',
-        card2: '#141720',
-        border: '#1E2130',
+        background: 'var(--bg)',
+        card: 'var(--card)',
+        card2: 'var(--card2)',
+        border: 'var(--border)',
         gold: {
-          DEFAULT: '#C9A84C',
-          light: '#E8C97A',
-          muted: '#C9A84C20',
-          glow: 'rgba(201, 168, 76, 0.15)',
+          DEFAULT: 'var(--gold)',
+          light: 'var(--gold-light)',
+          muted: 'rgba(201, 168, 76, 0.15)',
+          glow: 'var(--gold-glow)',
         },
-        purple: '#8B6FBB',
+        purple: 'var(--purple)',
         text: {
-          primary: '#F5F0E8',
-          muted: '#6B7280',
+          primary: 'var(--text)',
+          muted: 'var(--muted)',
         },
-        success: '#2ECC71',
-        error: '#E74C3C',
+        success: 'var(--success)',
+        error: 'var(--error)',
       },
       fontFamily: {
         heading: ["var(--font-heading)", "serif"],

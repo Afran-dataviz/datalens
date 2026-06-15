@@ -112,15 +112,15 @@ function SignupPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080A0F] text-[#F5F0E8] flex font-body">
+    <div className="min-h-screen bg-background text-text-primary flex font-body">
       
       {/* Left Panel - Branding & Stats (Hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 bg-[#0E1117] border-r border-[#1E2130] p-16 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-card border-r border-border p-16 flex-col justify-between relative overflow-hidden">
         <div className="absolute top-[-100px] left-[-100px] w-[350px] h-[350px] bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-100px] right-[-100px] w-[350px] h-[350px] bg-purple/5 rounded-full blur-[100px] pointer-events-none" />
 
         <Link href="/" className="font-heading text-2xl font-bold tracking-wide text-gold-light self-start">
-          Data<span className="text-[#F5F0E8]">Lens</span>
+          Data<span className="text-text-primary">Lens</span>
         </Link>
 
         <div className="my-auto space-y-12">
@@ -128,7 +128,7 @@ function SignupPageContent() {
             <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight">
               Premium Data Analytics, <span className="text-gold-gradient font-heading">Refined</span>
             </h2>
-            <p className="text-[#6B7280] font-light leading-relaxed text-base">
+            <p className="text-text-muted font-light leading-relaxed text-base">
               Create an account and test your spreadsheets today. Experience automated data structure recognition, automated column type configuration, and immediate charting.
             </p>
           </div>
@@ -138,13 +138,13 @@ function SignupPageContent() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex items-center gap-4 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/80 backdrop-blur max-w-sm"
+              className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card2/80 backdrop-blur max-w-sm"
             >
               <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center border border-gold/20">
                 <Database className="w-5 h-5 text-gold-light" />
               </div>
               <div>
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider">Browser Level Engine</div>
+                <div className="text-xs text-text-muted uppercase tracking-wider">Browser Level Engine</div>
                 <div className="text-sm font-semibold">Zero server file tracking</div>
               </div>
             </motion.div>
@@ -153,20 +153,20 @@ function SignupPageContent() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex items-center gap-4 p-4 rounded-xl border border-[#1E2130] bg-[#141720]/80 backdrop-blur max-w-sm ml-8"
+              className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card2/80 backdrop-blur max-w-sm ml-8"
             >
               <div className="w-10 h-10 rounded-lg bg-purple/10 flex items-center justify-center border border-purple/20">
                 <Sparkles className="w-5 h-5 text-purple" />
               </div>
               <div>
-                <div className="text-xs text-[#6B7280] uppercase tracking-wider">Plan Selected</div>
+                <div className="text-xs text-text-muted uppercase tracking-wider">Plan Selected</div>
                 <div className="text-sm font-semibold capitalize">{selectedPlan} Member Access</div>
               </div>
             </motion.div>
           </div>
         </div>
 
-        <div className="text-xs text-[#6B7280] font-light">
+        <div className="text-xs text-text-muted font-light">
           &copy; {new Date().getFullYear()} DataLens Inc. All rights reserved.
         </div>
       </div>
@@ -174,7 +174,7 @@ function SignupPageContent() {
       {/* Right Panel - Auth Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 relative">
         <div className="absolute inset-0 bg-gold/[0.01] pointer-events-none" />
-        <Link href="/" className="lg:hidden absolute top-8 left-8 text-[#6B7280] hover:text-gold-light flex items-center gap-2 text-sm">
+        <Link href="/" className="lg:hidden absolute top-8 left-8 text-text-muted hover:text-gold-light flex items-center gap-2 text-sm">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
 
@@ -187,8 +187,8 @@ function SignupPageContent() {
               </div>
               <div className="space-y-2">
                 <h1 className="font-heading text-3xl font-bold tracking-tight">Verify Your Email</h1>
-                <p className="text-sm text-[#6B7280] font-light max-w-sm mx-auto leading-relaxed">
-                  We&apos;ve sent a confirmation link to <span className="font-bold text-[#F5F0E8]">{email}</span>. Click the link inside the email to activate your account.
+                <p className="text-sm text-text-muted font-light max-w-sm mx-auto leading-relaxed">
+                  We&apos;ve sent a confirmation link to <span className="font-bold text-text-primary">{email}</span>. Click the link inside the email to activate your account.
                 </p>
               </div>
               <div className="pt-4">
@@ -203,14 +203,14 @@ function SignupPageContent() {
                 <h1 className="font-heading text-3xl md:text-4xl font-bold tracking-tight">
                   Create Account
                 </h1>
-                <p className="text-sm text-[#6B7280] font-light">
+                <p className="text-sm text-text-muted font-light">
                   Get started with DataLens today. Transform your tables into insights.
                 </p>
               </div>
 
               {/* Messages */}
               {errorMsg && (
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-[#E74C3C]/10 border border-[#E74C3C]/30 text-[#E74C3C] text-sm">
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-error/10 border border-error/30 text-error text-sm">
                   <AlertCircle className="w-5 h-5 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
@@ -219,9 +219,9 @@ function SignupPageContent() {
               {/* Form */}
               <form onSubmit={handleSignup} className="space-y-5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-widest text-[#6B7280]">Full Name</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Full Name</label>
                   <div className="relative">
-                    <User className="absolute left-4 top-3.5 w-4 h-4 text-[#6B7280]" />
+                    <User className="absolute left-4 top-3.5 w-4 h-4 text-text-muted" />
                     <input
                       type="text"
                       placeholder="Alexander Wright"
@@ -229,15 +229,15 @@ function SignupPageContent() {
                       onChange={(e) => setFullName(e.target.value)}
                       required
                       disabled={loading}
-                      className="w-full pl-12 pr-4 py-3 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                      className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-widest text-[#6B7280]">Email Address</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Email Address</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-3.5 w-4 h-4 text-[#6B7280]" />
+                    <Mail className="absolute left-4 top-3.5 w-4 h-4 text-text-muted" />
                     <input
                       type="email"
                       placeholder="name@company.com"
@@ -245,16 +245,16 @@ function SignupPageContent() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={loading}
-                      className="w-full pl-12 pr-4 py-3 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                      className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-widest text-[#6B7280]">Password</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Password</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-3 w-4 h-4 text-[#6B7280]" />
+                      <Lock className="absolute left-4 top-3 w-4 h-4 text-text-muted" />
                       <input
                         type="password"
                         placeholder="••••••••"
@@ -262,15 +262,15 @@ function SignupPageContent() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         disabled={loading}
-                        className="w-full pl-12 pr-4 py-3 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                        className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-widest text-[#6B7280]">Confirm</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Confirm</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-3 w-4 h-4 text-[#6B7280]" />
+                      <Lock className="absolute left-4 top-3 w-4 h-4 text-text-muted" />
                       <input
                         type="password"
                         placeholder="••••••••"
@@ -278,7 +278,7 @@ function SignupPageContent() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         disabled={loading}
-                        className="w-full pl-12 pr-4 py-3 bg-[#0E1117] border border-[#1E2130] rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-[#6B7280]/60 text-[#F5F0E8] disabled:opacity-50"
+                        className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-gold/50 transition placeholder-text-muted/60 text-text-primary disabled:opacity-50"
                       />
                     </div>
                   </div>
@@ -298,21 +298,21 @@ function SignupPageContent() {
               </form>
 
               <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-[#1E2130]"></div>
-                <span className="flex-shrink mx-4 text-xs uppercase text-[#6B7280] font-mono tracking-widest">or register with</span>
-                <div className="flex-grow border-t border-[#1E2130]"></div>
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-4 text-xs uppercase text-text-muted font-mono tracking-widest">or register with</span>
+                <div className="flex-grow border-t border-border"></div>
               </div>
 
               {/* OAuth Login */}
               <button
                 type="button"
                 onClick={handleGoogleSignup}
-                className="w-full py-4 border border-[#1E2130] rounded-xl hover:bg-[#141720] text-sm font-semibold flex items-center justify-center gap-3 transition"
+                className="w-full py-4 border border-border rounded-xl hover:bg-card2 text-sm font-semibold flex items-center justify-center gap-3 transition"
               >
                 <GoogleIcon className="w-4 h-4" /> Google Workspace
               </button>
 
-              <div className="text-center text-sm text-[#6B7280] font-light">
+              <div className="text-center text-sm text-text-muted font-light">
                 Already have an account?{' '}
                 <Link href="/login" className="text-gold hover:text-gold-light transition font-semibold">
                   Sign In
@@ -330,9 +330,9 @@ function SignupPageContent() {
 export default function SignupPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#080A0F] text-[#F5F0E8] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-text-primary gap-4">
         <div className="w-8 h-8 rounded-full border-2 border-gold border-t-transparent animate-spin" />
-        <p className="text-xs font-mono uppercase tracking-widest text-[#6B7280]">Verifying credentials gate...</p>
+        <p className="text-xs font-mono uppercase tracking-widest text-text-muted">Verifying credentials gate...</p>
       </div>
     }>
       <SignupPageContent />
