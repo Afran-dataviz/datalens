@@ -99,7 +99,7 @@ export async function POST(request: Request) {
               <h2>Payment Failed</h2>
               <p>We were unable to process your recent monthly subscription payment for DataLens Pro.</p>
               <p>Your subscription is currently marked as past due. To prevent service interruptions, please log in and update your credit card details.</p>
-              <p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings">Manage Billing Details</a></p>
+              <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings">Manage Billing Details</a></p>
             `,
           });
         }

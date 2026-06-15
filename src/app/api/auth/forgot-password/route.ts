@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const adminSupabase = createAdminClient();
 
     // 1. Generate recovery link
-    const origin = request.headers.get('origin') || 'http://localhost:3000';
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || '';
     const redirectTo = `${origin}/auth/callback?next=/dashboard/settings`;
 
     const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
