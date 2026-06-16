@@ -27,6 +27,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && typeof crypto !== 'undefined' && !crypto.randomUUID) {
+                crypto.randomUUID = function() {
+                  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+                    .replace(/[xy]/g, function(c) {
+                      var r = Math.random() * 16 | 0;
+                      var v = c === 'x' ? r : (r & 0x3 | 0x8);
+                      return v.toString(16);
+                    });
+                };
+              }
+            `
+          }}
+        />
+      </head>
       <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           {children}

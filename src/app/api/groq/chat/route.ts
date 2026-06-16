@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { messages, schemaMeta, summaryStats, sampleRows } = await request.json();
@@ -58,10 +61,9 @@ Answer the user's questions about this data accurately. Highlight anomalies, exp
       },
     });
 
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "An error occurred while connecting to Groq.";
+  } catch (error: any) {
     return NextResponse.json(
-      { error: message },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

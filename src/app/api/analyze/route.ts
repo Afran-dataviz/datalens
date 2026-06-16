@@ -1,8 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export const dynamic = 'force-dynamic';
-
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    .replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+}
 
 export async function GET(request: Request) {
   try {
@@ -64,29 +77,49 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to download spreadsheet content from storage." }, { status: 500 });
     }
 
-    const jsonText = await storageBlob.text();
+    let jsonText = await storageBlob.text();
     let rows = JSON.parse(jsonText);
     console.log(`[Analyze API] Successfully loaded dataset. Total rows: ${rows.length}`);
 
-    // 4. Reduce payload size on mobile (first 100 rows)
+    // 4. Reduce payload size / handle large datasets
     let isMobileLimit = false;
+    let warning: string | null = null;
     const originalLength = rows.length;
+    
     if (isMobile && rows.length > 100) {
       console.log(`[Analyze API Mobile] Truncating dataset size from ${originalLength} to 100 rows for mobile optimization.`);
       rows = rows.slice(0, 100);
       isMobileLimit = true;
+      warning = "Mobile limit: Showing first 100 rows for performance.";
+    } else if (rows.length > 50000) {
+      console.log(`[Analyze API] Truncating very large dataset from ${originalLength} to 5,000 rows.`);
+      rows = rows.slice(0, 5000);
+      warning = "Very large dataset. Showing first 5,000 rows.";
+    } else if (rows.length > 10000) {
+      console.log(`[Analyze API] Truncating large dataset from ${originalLength} to 10,000 rows.`);
+      rows = rows.slice(0, 10000);
+      warning = "Large dataset detected. Showing first 10,000 rows for performance.";
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       file,
       analysis,
       dataset: rows,
       totalRows: originalLength,
-      isMobileLimit
-    });
+      isMobileLimit,
+      warning
+    };
+
+    // Clean up large variables
+    jsonText = '';
+    rows = null;
+
+    return NextResponse.json(responsePayload);
 
   } catch (error: any) {
-    console.error('[Analyze API Global Error] Exception:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
   }
 }

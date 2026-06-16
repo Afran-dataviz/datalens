@@ -54,6 +54,17 @@ import {
   X
 } from 'lucide-react';
 
+const safeStorage = {
+  get: (key: string) => {
+    try { return localStorage.getItem(key); } 
+    catch { return null; }
+  },
+  set: (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } 
+    catch { }
+  }
+};
+ 
 interface ColumnMeta {
   name: string;
   type: 'Number' | 'Date' | 'Text' | 'Boolean';
@@ -187,6 +198,7 @@ export default function AnalysisDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingStep, setLoadingStep] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [warningMsg, setWarningMsg] = useState<string | null>(null);
 
   // Slicer / Filter Panel Sidenav states
   const [showFilters, setShowFilters] = useState(false); // Default hidden on mobile, open on desktop via resize hook
@@ -307,7 +319,10 @@ export default function AnalysisDashboard() {
         setAnalysisRecord(data.analysis);
         setShareable(data.analysis.shareable || false);
         setDataset(data.dataset);
-
+        if (data.warning) {
+          setWarningMsg(data.warning);
+        }
+ 
         console.log('[Dashboard Load Success] Finished rendering page components.');
 
       } catch (err: any) {
@@ -1551,6 +1566,14 @@ export default function AnalysisDashboard() {
         {/* Dashboard Printable Content Box */}
         <div id="dashboard-content" className="p-4 md:p-8 space-y-6 md:space-y-8 flex-1">
           
+          {warningMsg && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs">
+              <AlertCircle className="w-4.5 h-4.5 shrink-0 animate-pulse text-amber-500" />
+              <span>{warningMsg}</span>
+              <button onClick={() => setWarningMsg(null)} className="ml-auto text-amber-500 hover:text-text-primary"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          )}
+
           {/* ACTIVE FILTER CHIPS ROW */}
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 p-3 bg-card border border-border rounded-2xl text-xs">

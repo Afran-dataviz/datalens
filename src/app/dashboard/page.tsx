@@ -24,6 +24,29 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    .replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+}
+
+const safeStorage = {
+  get: (key: string) => {
+    try { return localStorage.getItem(key); } 
+    catch { return null; }
+  },
+  set: (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } 
+    catch { }
+  }
+};
+
 interface ColumnMeta {
   name: string;
   type: 'Number' | 'Date' | 'Text' | 'Boolean';
@@ -46,6 +69,7 @@ export default function DashboardPage() {
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [columns, setColumns] = useState<ColumnMeta[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [warningMsg, setWarningMsg] = useState<string | null>(null);
 
   // Wizard state
   const [showWizard, setShowWizard] = useState(false);
@@ -214,8 +238,13 @@ export default function DashboardPage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const buffer = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(buffer, { 
+            type: 'buffer',
+            sheetRows: 10000,
+            cellDates: true,
+            dense: true
+          });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(worksheet);
@@ -252,15 +281,27 @@ export default function DashboardPage() {
       return;
     }
 
+    // Add file size check / row limit check before processing
+    let warning: string | null = null;
+    let finalData = data;
+    if (data.length > 50000) {
+      finalData = data.slice(0, 5000);
+      warning = "Very large dataset. Showing first 5,000 rows.";
+    } else if (data.length > 10000) {
+      finalData = data.slice(0, 10000);
+      warning = "Large dataset detected. Showing first 10,000 rows for performance.";
+    }
+    setWarningMsg(warning);
+
     // Capture first row keys
-    const firstRow = data[0];
+    const firstRow = finalData[0];
     const keys = Object.keys(firstRow);
     
     // Auto detect types
     const inferred: ColumnMeta[] = keys.map((key) => {
       // Look at column values
       let type: ColumnMeta['type'] = 'Text';
-      const values = data.map(r => r[key]).filter(v => v !== null && v !== undefined);
+      const values = finalData.map(r => r[key]).filter(v => v !== null && v !== undefined);
       
       if (values.length > 0) {
         const sample = values[0];
@@ -282,7 +323,7 @@ export default function DashboardPage() {
     });
 
     setColumns(inferred);
-    setParsedData(data);
+    setParsedData(finalData);
     setParsing(false);
     
     // Set initial configuration parameters
@@ -309,6 +350,7 @@ export default function DashboardPage() {
     setParsedData([]);
     setColumns([]);
     setErrorMsg(null);
+    setWarningMsg(null);
   };
 
   // Perform client-side data cleansing
@@ -542,11 +584,11 @@ export default function DashboardPage() {
           };
         }
       });
-
-      fileId = crypto.randomUUID();
+ 
+      fileId = generateUUID();
       const storagePath = `${user.id}/${fileId}/data.json`;
       const jsonContent = JSON.stringify(parsedData);
-
+ 
       // 2. Upload parsed cleaned data to our secure API route first
       // We upload the data array as a JSON string to enforce server-side plan limits
       const response = await fetch('/api/upload', {
@@ -559,12 +601,17 @@ export default function DashboardPage() {
           fileContent: jsonContent,
         }),
       });
-
+ 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to upload dataset.');
       }
 
+      const responseData = await response.json();
+      if (responseData.warning) {
+        setWarningMsg(responseData.warning);
+      }
+ 
       // 3. Insert record in `files` table after successful upload
       const { error: fileError } = await supabase
         .from('files')
@@ -578,10 +625,10 @@ export default function DashboardPage() {
           row_count: parsedData.length,
           column_count: columns.length
         });
-
+ 
       if (fileError) throw fileError;
       fileInserted = true;
-
+ 
       // 4. Create record in `analyses` table
       const cleaningOptions = {
         removeDuplicates,
@@ -590,7 +637,7 @@ export default function DashboardPage() {
         caseStandard,
         dateField
       };
-
+ 
       const { error: analysisError } = await supabase
         .from('analyses')
         .insert({
@@ -601,23 +648,17 @@ export default function DashboardPage() {
           summary_stats: summaryStats,
           chart_config: {}
         });
-
+ 
       if (analysisError) throw analysisError;
-
+ 
       // Redirect to specific analyzed file page with mobile fallback
       console.log('[Dashboard Page] Redirecting to analysis page. File ID:', fileId);
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
-      if (isMobileDevice) {
-        console.log('[Dashboard Page Mobile] Using window.location.href fallback redirect...');
+      try {
+        await router.push(`/dashboard/${fileId}`);
+        router.refresh();
+      } catch (err) {
+        console.warn('[Dashboard Page Router Error] router.push failed, falling back to location.href:', err);
         window.location.href = `/dashboard/${fileId}`;
-      } else {
-        try {
-          router.push(`/dashboard/${fileId}`);
-          router.refresh();
-        } catch (err) {
-          console.warn('[Dashboard Page Router Error] router.push failed, falling back to location.href:', err);
-          window.location.href = `/dashboard/${fileId}`;
-        }
       }
       
     } catch (err: any) {
@@ -661,6 +702,14 @@ export default function DashboardPage() {
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{errorMsg}</span>
           <button onClick={() => setErrorMsg(null)} className="ml-auto text-error hover:text-text-primary"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {warningMsg && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0 animate-pulse" />
+          <span>{warningMsg}</span>
+          <button onClick={() => setWarningMsg(null)} className="ml-auto text-amber-500 hover:text-text-primary"><X className="w-4 h-4" /></button>
         </div>
       )}
 

@@ -4,6 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Megaphone, X } from 'lucide-react';
 
+const safeStorage = {
+  get: (key: string) => {
+    try { return localStorage.getItem(key); } 
+    catch { return null; }
+  },
+  set: (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } 
+    catch { }
+  }
+};
+
 interface Broadcast {
   id: string;
   message: string;
@@ -27,7 +38,7 @@ export default function BroadcastBanner() {
 
         if (!error && data) {
           // Check if dismissed locally
-          const lastDismissedId = localStorage.getItem('datalens_dismissed_broadcast_id');
+          const lastDismissedId = safeStorage.get('datalens_dismissed_broadcast_id');
           if (lastDismissedId !== data.id) {
             setBroadcast(data as Broadcast);
             setDismissed(false);
@@ -43,7 +54,7 @@ export default function BroadcastBanner() {
 
   const handleDismiss = () => {
     if (broadcast) {
-      localStorage.setItem('datalens_dismissed_broadcast_id', broadcast.id);
+      safeStorage.set('datalens_dismissed_broadcast_id', broadcast.id);
       setDismissed(true);
     }
   };
