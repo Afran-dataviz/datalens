@@ -183,7 +183,9 @@ export default function AnalysisDashboard() {
   const [fileRecord, setFileRecord] = useState<any>(null);
   const [analysisRecord, setAnalysisRecord] = useState<any>(null);
   const [dataset, setDataset] = useState<any[]>([]);
+  const [chartsRendered, setChartsRendered] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Slicer / Filter Panel Sidenav states
@@ -223,9 +225,13 @@ export default function AnalysisDashboard() {
   }, []);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (retryCount = 0) => {
       try {
         setLoading(true);
+        setErrorMsg(null);
+        setLoadingStep("Authorizing credentials...");
+        console.log(`[Dashboard Load Step 1] Fetching user (Attempt #${retryCount + 1})...`);
+
         // 1. Get user plan
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -237,49 +243,108 @@ export default function AnalysisDashboard() {
           if (subscription) setPlan(subscription.plan || 'free');
         }
 
-        // 2. Fetch file properties
-        const { data: file, error: fileErr } = await supabase
-          .from('files')
-          .select('*')
-          .eq('id', fileId)
-          .single();
+        setLoadingStep("Checking device session cache...");
+        console.log('[Dashboard Load Step 2] Checking sessionStorage for cached data...');
 
-        if (fileErr || !file) throw new Error("Could not find requested analysis file.");
-        setFileRecord(file);
+        // 2. Check sessionStorage cache
+        let cachedData: any = null;
+        try {
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            const cache = window.sessionStorage.getItem(`datalens-cache-${fileId}`);
+            if (cache) {
+              cachedData = JSON.parse(cache);
+              console.log('[Dashboard Load Cache] Loaded cached dataset.');
+            }
+          }
+        } catch (cacheErr) {
+          console.warn('[Dashboard Load Cache Error] Session storage is disabled or unavailable:', cacheErr);
+        }
 
-        // 3. Fetch analysis details
-        const { data: analysis, error: analysisErr } = await supabase
-          .from('analyses')
-          .select('*')
-          .eq('file_id', fileId)
-          .single();
-        
-        if (analysisErr) throw analysisErr;
-        setAnalysisRecord(analysis);
-        setShareable(analysis.shareable || false);
+        let data: any;
 
-        // 4. Download clean sheet data from Supabase storage
-        const { data: storageBlob, error: storageErr } = await supabase.storage
-          .from('uploads')
-          .download(file.storage_path);
+        if (cachedData) {
+          data = cachedData;
+          setLoadingStep("Parsing cached telemetry...");
+        } else {
+          setLoadingStep("Connecting to telemetry engine...");
+          console.log('[Dashboard Load Step 3] Fetching from API: /api/analyze');
 
-        if (storageErr) throw new Error("Failed to download spreadsheet content from cloud storage.");
+          // Determine if it is a mobile device to instruct the endpoint to truncate
+          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+          const url = `/api/analyze?fileId=${fileId}&isMobile=${isMobileDevice}`;
 
-        const jsonText = await storageBlob.text();
-        const rows = JSON.parse(jsonText);
-        setDataset(rows);
+          // Create dynamic controller with 15s timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.error('[Dashboard Load Timeout] Request timed out after 15 seconds.');
+            controller.abort();
+          }, 15000);
+
+          const res = await fetch(url, {
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!res.ok) {
+            throw new Error(`Server returned error status: ${res.status}`);
+          }
+
+          data = await res.json();
+          console.log('[Dashboard Load Step 4] API responded successfully.');
+
+          // Cache in sessionStorage if available
+          try {
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+              window.sessionStorage.setItem(`datalens-cache-${fileId}`, JSON.stringify(data));
+            }
+          } catch (cacheStoreErr) {
+            console.warn('[Dashboard Cache Store Error] Failed to write dataset cache:', cacheStoreErr);
+          }
+        }
+
+        setLoadingStep("Parsing dataset parameters...");
+        setFileRecord(data.file);
+        setAnalysisRecord(data.analysis);
+        setShareable(data.analysis.shareable || false);
+        setDataset(data.dataset);
+
+        console.log('[Dashboard Load Success] Finished rendering page components.');
 
       } catch (err: any) {
-        setErrorMsg(err.message || "Failed to load dashboard parameters.");
+        console.error(`[Dashboard Load Failure] Failed at step "${loadingStep}":`, err.message || err);
+        
+        // Retry logic (up to 3 total attempts)
+        if (retryCount < 2) {
+          const nextAttempt = retryCount + 2;
+          console.log(`[Dashboard Load Retry] Retrying in 2 seconds...`);
+          setLoadingStep(`Retrying fetch (Attempt ${nextAttempt}/3)...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          fetchDashboardData(retryCount + 1);
+        } else {
+          setErrorMsg(`Loading failed during step: "${loadingStep}". Reason: ${err.message || "Network timeout or storage download failure."}`);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     if (fileId) {
-      fetchDashboardData();
+      fetchDashboardData(0);
     }
   }, [fileId]);
+
+  // Lazy-load charts after page elements are loaded to prevent mobile page freezing
+  useEffect(() => {
+    if (!loading && dataset.length > 0) {
+      const timer = setTimeout(() => {
+        setChartsRendered(true);
+        console.log('[Dashboard Charts] Visualizations lazy loaded.');
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setChartsRendered(false);
+    }
+  }, [loading, dataset]);
 
   // Formatter helpers
   const formatNumber = (num: number, isCurrency = false, isPercent = false) => {
@@ -1204,21 +1269,36 @@ export default function AnalysisDashboard() {
       <div className="flex-grow flex flex-col items-center justify-center gap-4 bg-background text-text-primary min-h-screen">
         <RefreshCw className="w-10 h-10 animate-spin text-gold" />
         <p className="text-xs text-text-muted font-mono tracking-widest uppercase animate-pulse">Assembling Luxury BI Workspaces...</p>
+        {loadingStep && (
+          <p className="text-[10px] text-gold-light/85 font-mono tracking-wide mt-2">{loadingStep}</p>
+        )}
       </div>
     );
   }
 
   if (errorMsg || !fileRecord) {
     return (
-      <div className="flex-grow flex flex-col items-center justify-center gap-4 bg-background text-text-primary p-6 min-h-screen">
-        <div className="w-12 h-12 rounded-full bg-error/10 border border-error/20 flex items-center justify-center text-error">
-          <AlertCircle className="w-6 h-6" />
+      <div className="flex-grow flex flex-col items-center justify-center gap-6 bg-background text-text-primary p-6 min-h-screen text-center">
+        <div className="w-16 h-16 rounded-2xl bg-error/10 border border-error/20 flex items-center justify-center text-error">
+          <AlertCircle className="w-8 h-8" />
         </div>
-        <h3 className="font-heading text-xl font-bold">Failed to load Business Intelligence layout</h3>
-        <p className="text-sm text-text-muted font-light max-w-md text-center">{errorMsg || "An unknown error has occurred."}</p>
-        <Link href="/dashboard" className="btn-gold px-6 py-2.5 text-xs font-bold uppercase tracking-wider mt-4">
-          Return to uploads
-        </Link>
+        <div className="space-y-2 max-w-md">
+          <h3 className="font-heading text-xl font-bold">Dashboard Loading Failed</h3>
+          <p className="text-xs text-text-muted font-light leading-relaxed">{errorMsg || "An unknown error has occurred."}</p>
+        </div>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => {
+              window.location.reload();
+            }}
+            className="btn-gold px-6 py-3 text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry Loading
+          </button>
+          <Link href="/dashboard" className="px-6 py-3 border border-border bg-card2 text-xs font-bold uppercase tracking-wider rounded-xl text-text-muted hover:text-text-primary flex items-center justify-center transition">
+            Return to Uploads
+          </Link>
+        </div>
       </div>
     );
   }
@@ -1855,24 +1935,30 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <AreaChart data={timeSeriesData}>
-                      <defs>
-                        <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--gold)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--gold)" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="date" stroke="var(--muted)" fontSize={10} tickLine={false} />
-                      <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }}
-                        labelStyle={{ color: 'var(--gold)', fontWeight: 'bold' }}
-                      />
-                      <Area type="monotone" dataKey="value" stroke="var(--gold)" strokeWidth={2.5} fillOpacity={1} fill="url(#area-grad)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Trend Analysis...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <AreaChart data={timeSeriesData}>
+                        <defs>
+                          <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--gold)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="var(--gold)" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="date" stroke="var(--muted)" fontSize={10} tickLine={false} />
+                        <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }}
+                          labelStyle={{ color: 'var(--gold)', fontWeight: 'bold' }}
+                        />
+                        <Area type="monotone" dataKey="value" stroke="var(--gold)" strokeWidth={2.5} fillOpacity={1} fill="url(#area-grad)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -1894,19 +1980,25 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <BarChart data={yoyBarData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="year" stroke="var(--muted)" fontSize={10} tickLine={false} />
-                      <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Bar dataKey="value" fill="var(--purple)" radius={[4, 4, 0, 0]}>
-                        {yoyBarData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering YoY Growth...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <BarChart data={yoyBarData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="year" stroke="var(--muted)" fontSize={10} tickLine={false} />
+                        <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Bar dataKey="value" fill="var(--purple)" radius={[4, 4, 0, 0]}>
+                          {yoyBarData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -1928,19 +2020,25 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <BarChart data={categoryBarData} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis type="number" stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <YAxis dataKey="name" type="category" stroke="var(--muted)" fontSize={9} tickLine={false} width={80} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Bar dataKey="value" fill="#06B6D4" radius={[0, 4, 4, 0]}>
-                        {categoryBarData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={colorsList[(index + 2) % colorsList.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Segments Analysis...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <BarChart data={categoryBarData} layout="vertical" margin={{ left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis type="number" stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <YAxis dataKey="name" type="category" stroke="var(--muted)" fontSize={9} tickLine={false} width={80} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Bar dataKey="value" fill="#06B6D4" radius={[0, 4, 4, 0]}>
+                          {categoryBarData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={colorsList[(index + 2) % colorsList.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -1962,25 +2060,31 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full flex items-center justify-center">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryBarData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={65}
-                        outerRadius={95}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {categoryBarData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Legend verticalAlign="bottom" height={36} iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Allocation Share...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <PieChart>
+                        <Pie
+                          data={categoryBarData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={65}
+                          outerRadius={95}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {categoryBarData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Legend verticalAlign="bottom" height={36} iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -2002,17 +2106,23 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <BarChart data={groupedBarData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="name" stroke="var(--muted)" fontSize={10} tickLine={false} />
-                      <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} />
-                      <Bar dataKey="val1" name={numCols[0]?.name} fill="var(--gold)" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="val2" name={numCols[1]?.name} fill="var(--purple)" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Comparison Matrix...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <BarChart data={groupedBarData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="name" stroke="var(--muted)" fontSize={10} tickLine={false} />
+                        <YAxis stroke="var(--muted)" fontSize={10} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Bar dataKey="val1" name={numCols[0]?.name} fill="var(--gold)" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="val2" name={numCols[1]?.name} fill="var(--purple)" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -2034,15 +2144,21 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <ScatterChart margin={{ top: 20, right: 10, bottom: 10, left: 10 }}>
-                      <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                      <XAxis type="number" dataKey="x" name={numCols[0]?.name} stroke="var(--muted)" fontSize={9} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <YAxis type="number" dataKey="y" name={numCols[1]?.name} stroke="var(--muted)" fontSize={9} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-                      <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Scatter name="Data points" data={scatterPlotData} fill="var(--gold)" />
-                    </ScatterChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Bivariate Correlation Scatter...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <ScatterChart margin={{ top: 20, right: 10, bottom: 10, left: 10 }}>
+                        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                        <XAxis type="number" dataKey="x" name={numCols[0]?.name} stroke="var(--muted)" fontSize={9} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <YAxis type="number" dataKey="y" name={numCols[1]?.name} stroke="var(--muted)" fontSize={9} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+                        <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Scatter name="Data points" data={scatterPlotData} fill="var(--gold)" />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}
@@ -2064,15 +2180,21 @@ export default function AnalysisDashboard() {
                 </div>
 
                 <div className="h-60 md:h-72 w-full">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <BarChart data={histogramData}>
-                      <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                      <XAxis dataKey="range" stroke="var(--muted)" fontSize={8} tickLine={false} />
-                      <YAxis stroke="var(--muted)" fontSize={9} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
-                      <Bar dataKey="count" fill="var(--gold-light)" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!chartsRendered ? (
+                    <div className="h-60 w-full bg-card2/40 rounded-2xl animate-pulse flex items-center justify-center text-text-muted text-xs font-mono">
+                      Rendering Frequency Density Histogram...
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={isMobile ? 240 : 288}>
+                      <BarChart data={histogramData}>
+                        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                        <XAxis dataKey="range" stroke="var(--muted)" fontSize={8} tickLine={false} />
+                        <YAxis stroke="var(--muted)" fontSize={9} tickLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--card2)', borderColor: 'var(--border)', borderRadius: '12px', color: 'var(--text)' }} />
+                        <Bar dataKey="count" fill="var(--gold-light)" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}

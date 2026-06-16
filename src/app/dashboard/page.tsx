@@ -604,9 +604,21 @@ export default function DashboardPage() {
 
       if (analysisError) throw analysisError;
 
-      // Redirect to specific analyzed file page
-      router.push(`/dashboard/${fileId}`);
-      router.refresh();
+      // Redirect to specific analyzed file page with mobile fallback
+      console.log('[Dashboard Page] Redirecting to analysis page. File ID:', fileId);
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
+      if (isMobileDevice) {
+        console.log('[Dashboard Page Mobile] Using window.location.href fallback redirect...');
+        window.location.href = `/dashboard/${fileId}`;
+      } else {
+        try {
+          router.push(`/dashboard/${fileId}`);
+          router.refresh();
+        } catch (err) {
+          console.warn('[Dashboard Page Router Error] router.push failed, falling back to location.href:', err);
+          window.location.href = `/dashboard/${fileId}`;
+        }
+      }
       
     } catch (err: any) {
       if (fileInserted) {
