@@ -47,6 +47,38 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (isAdminRoute && user) {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+    if (serviceRoleKey) {
+      const adminClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        serviceRoleKey,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll() {},
+          },
+        }
+      );
+      
+      const { data: adminCheck } = await adminClient
+        .from('admins')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!adminCheck) {
+        url.pathname = '/dashboard';
+        return NextResponse.redirect(url);
+      }
+    } else {
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (isAuthRoute && user) {
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

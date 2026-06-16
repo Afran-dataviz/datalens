@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardContainer from '@/components/DashboardContainer';
 
@@ -32,14 +32,16 @@ export default async function DashboardLayout({
 
   const activePlan = (subscription?.plan === 'pro' && subscription?.status === 'active') ? 'pro' : 'free';
 
-  // Check if user is registered in admin role
-  const { data: admin } = await supabase
+  // Check if user is registered in admin role using admin client to bypass RLS
+  const adminSupabase = createAdminClient();
+  const { data: admin } = await adminSupabase
     .from('admins')
     .select('user_id')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const userProfile = {
+    id: user.id,
     email: user.email || '',
     fullName: profile?.full_name || user.user_metadata?.full_name || 'User',
     avatarUrl: profile?.avatar_url || '',

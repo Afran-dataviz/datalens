@@ -18,6 +18,7 @@ import {
 
 interface SidebarProps {
   user: {
+    id?: string;
     email: string;
     fullName: string;
     avatarUrl: string;
@@ -35,6 +36,31 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
   
   const [collapsed, setCollapsed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(user.plan);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user || !user.id) {
+        setIsAdmin(false);
+        setCheckingAdmin(false);
+        return;
+      }
+      try {
+        const { data: adminCheck } = await supabase
+          .from('admins')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .single();
+        setIsAdmin(!!adminCheck);
+      } catch {
+        setIsAdmin(false);
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+    checkAdminStatus();
+  }, [user, supabase]);
 
   useEffect(() => {
     setCurrentPlan(user.plan);
@@ -59,14 +85,6 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
     { name: "My Files", icon: <FileSpreadsheet className="w-5 h-5" />, href: "/dashboard/files" },
     { name: "Settings", icon: <Settings className="w-5 h-5" />, href: "/dashboard/settings" },
   ];
-
-  if (user.isAdmin) {
-    menuItems.push({
-      name: "Admin Panel",
-      icon: <ShieldAlert className="w-5 h-5" />,
-      href: "/admin"
-    });
-  }
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -142,6 +160,31 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
                 </Link>
               );
             })}
+
+            {/* Admin Panel Link with verification loading skeleton */}
+            {checkingAdmin ? (
+              <div className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-text-muted opacity-50`}>
+                <ShieldAlert className="w-5 h-5 animate-pulse text-gold-light" />
+                {(!collapsed || mobileOpen) && <span className="animate-pulse">Verifying Access...</span>}
+              </div>
+            ) : (
+              isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => onClose && onClose()}
+                  className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition group ${
+                    pathname === '/admin' 
+                      ? 'bg-gold/10 border border-gold/20 text-gold-light font-bold' 
+                      : 'text-text-muted hover:text-text-primary hover:bg-card2'
+                  }`}
+                >
+                  <div className={`${pathname === '/admin' ? 'text-gold-light' : 'text-text-muted group-hover:text-gold-light'}`}>
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  {(!collapsed || mobileOpen) && <span>Admin Panel</span>}
+                </Link>
+              )
+            )}
           </nav>
         </div>
 
