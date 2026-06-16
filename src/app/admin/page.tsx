@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   RefreshCw,
   Trash2,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -39,98 +40,93 @@ export default function AdminDashboard() {
   const [broadcastLoading, setBroadcastLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const checkAdminAndFetchData = async () => {
+  // Telemetry fetcher
+  const fetchTelemetryData = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setErrorMsg(null);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
 
-      // Check if user is inside admins table
-      const { data: adminRecord, error: adminErr } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // 1. Fetch Stats API
+      const statsRes = await fetch('/api/admin/stats');
+      if (!statsRes.ok) throw new Error("Failed to load platform stats telemetry.");
+      const statsData = await statsRes.json();
 
-      if (adminErr || !adminRecord) {
-        // If not admin, redirect to standard dashboard
-        router.push('/dashboard');
-        return;
-      }
+      // 2. Fetch Users API
+      const usersRes = await fetch('/api/admin/users');
+      if (!usersRes.ok) throw new Error("Failed to load platform users database.");
+      const usersData = await usersRes.json();
 
-      setIsAdmin(true);
-
-      // Fetch platform stats
-      // 1. Fetch all profiles
-      const { data: profiles, error: profErr } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, created_at');
-      if (profErr) throw profErr;
-
-      // 2. Fetch all subscriptions
-      const { data: subs, error: subErr } = await supabase
-        .from('subscriptions')
-        .select('user_id, plan, stripe_subscription_id');
-      if (subErr) throw subErr;
-
-      // 3. Fetch all files
-      const { data: files, error: fileErr } = await supabase
-        .from('files')
-        .select('id, file_size, file_type');
-      if (fileErr) throw fileErr;
-
-      // 4. Fetch broadcasts
+      // 3. Fetch Broadcasts (can be done using standard client or from API, keeping client query for safety)
       const { data: bcasts, error: bErr } = await supabase
         .from('broadcasts')
         .select('*')
         .order('created_at', { ascending: false });
       if (bErr) throw bErr;
 
+      setStats(statsData);
+      setUsersList(usersData.users || []);
       setBroadcasts(bcasts || []);
 
-      // Calculate stats
-      const totalUsers = profiles?.length || 0;
-      const proUsers = subs?.filter(s => s.plan === 'pro').length || 0;
-      const totalFiles = files?.length || 0;
-      const totalStorage = files?.reduce((acc, curr) => acc + curr.file_size, 0) || 0;
-
-      setStats({
-        totalUsers,
-        proUsers,
-        totalFiles,
-        totalStorage
-      });
-
-      // Build User Directory with file count & plan details
-      const userDir = profiles.map(p => {
-        const sub = subs.find(s => s.user_id === p.id);
-        const userFiles = files.filter(f => f.id === p.id); // note: files have user_id, but we mock/calculate
-        return {
-          id: p.id,
-          fullName: p.full_name || 'Anonymous User',
-          email: p.email,
-          plan: sub?.plan || 'free',
-          joined: new Date(p.created_at).toLocaleDateString(),
-        };
-      });
-
-      setUsersList(userDir);
-
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to load admin telemetry.");
+      console.error("[Admin Telemetry Refresh Failed]:", err);
+      setErrorMsg(err.message || "Failed to update platform telemetry data.");
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    checkAdminAndFetchData();
+    const checkAdminAndInitialize = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg(null);
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/login');
+          return;
+        }
+
+        // Check if user is inside admins table
+        const { data: adminRecord, error: adminErr } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (adminErr || !adminRecord) {
+          // If not admin, redirect to standard dashboard
+          router.push('/dashboard');
+          return;
+        }
+
+        setIsAdmin(true);
+        await fetchTelemetryData(false);
+
+      } catch (err: any) {
+        setErrorMsg(err.message || "Failed to authenticate admin session.");
+        setLoading(false);
+      }
+    };
+
+    checkAdminAndInitialize();
   }, []);
+
+  // Auto-refresh interval (every 30 seconds)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const interval = setInterval(() => {
+      console.log('[Admin Dashboard] Auto-refreshing telemetry in background...');
+      fetchTelemetryData(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   const handlePostBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,11 +176,48 @@ export default function AdminDashboard() {
     { name: 'JSON Arrays', value: 25, color: '#E8C97A' }
   ];
 
+  // Loading Skeletons
   if (loading) {
     return (
-      <div className="flex-grow flex flex-col items-center justify-center gap-4 bg-[#080A0F] text-[#F5F0E8]">
-        <RefreshCw className="w-10 h-10 animate-spin text-gold-light" />
-        <p className="text-xs text-[#6B7280] font-mono tracking-widest uppercase">Opening Admin Command Center...</p>
+      <div className="max-w-6xl mx-auto px-6 py-12 w-full space-y-10 bg-[#080A0F] text-[#F5F0E8] min-h-screen">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center pb-6 border-b border-[#1E2130]">
+          <div className="space-y-2 w-1/3 animate-pulse">
+            <div className="h-8 bg-[#141720] rounded-xl w-3/4" />
+            <div className="h-4 bg-[#141720] rounded-md w-1/2" />
+          </div>
+        </div>
+
+        {/* KPI Cards Skeletons */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 rounded-2xl bg-[#0E1117] border border-[#1E2130] space-y-3 animate-pulse">
+              <div className="flex justify-between items-center">
+                <div className="h-3 bg-[#141720] rounded w-1/2" />
+                <div className="w-4 h-4 bg-[#141720] rounded" />
+              </div>
+              <div className="h-8 bg-[#141720] rounded-xl w-2/3" />
+              <div className="h-2.5 bg-[#141720] rounded w-1/3" />
+            </div>
+          ))}
+        </div>
+
+        {/* Charts & Broadcast Skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="p-6 rounded-2xl bg-[#0E1117] border border-[#1E2130] h-96 animate-pulse" />
+          <div className="p-6 rounded-2xl bg-[#0E1117] border border-[#1E2130] h-96 animate-pulse" />
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="bg-[#0E1117] border border-[#1E2130] rounded-2xl overflow-hidden p-6 space-y-4">
+          <div className="h-5 bg-[#141720] rounded w-1/4 animate-pulse" />
+          <div className="h-3 bg-[#141720] rounded w-1/3 animate-pulse" />
+          <div className="space-y-3 pt-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-10 bg-[#141720] rounded-xl w-full animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -202,7 +235,25 @@ export default function AdminDashboard() {
           </h1>
           <p className="text-sm text-[#6B7280] font-light mt-1">Platform-level user profiles, MRR tracking, and global alerts broadcasts.</p>
         </div>
+        
+        <button
+          onClick={() => fetchTelemetryData(false)}
+          className="p-2.5 border border-[#1E2130] rounded-xl text-gold-light hover:text-gold hover:bg-[#141720] transition flex items-center gap-1.5"
+          title="Force Refresh Data"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
+
+      {errorMsg && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          <Megaphone className="w-5 h-5 shrink-0" />
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="ml-auto hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Row 1: KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -354,13 +405,14 @@ export default function AdminDashboard() {
                 <th className="p-4">User</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Plan Status</th>
+                <th className="p-4">Files</th>
                 <th className="p-4">Joined Date</th>
               </tr>
             </thead>
             <tbody>
               {usersList.map((usr) => (
-                <tr key={usr.id} className="border-b border-[#1E2130]/30 hover:bg-[#141720]/10 transition">
-                  <td className="p-4 font-semibold text-[#F5F0E8]">{usr.fullName}</td>
+                <tr key={usr.id || usr.email} className="border-b border-[#1E2130]/30 hover:bg-[#141720]/10 transition">
+                  <td className="p-4 font-semibold text-[#F5F0E8]">{usr.name}</td>
                   <td className="p-4 font-mono">{usr.email}</td>
                   <td className="p-4">
                     <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${
@@ -371,12 +423,13 @@ export default function AdminDashboard() {
                       {usr.plan}
                     </span>
                   </td>
-                  <td className="p-4 text-[#6B7280]">{usr.joined}</td>
+                  <td className="p-4 font-mono text-[#F5F0E8]">{usr.fileCount}</td>
+                  <td className="p-4 text-[#6B7280]">{new Date(usr.joinedDate).toLocaleDateString()}</td>
                 </tr>
               ))}
               {usersList.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-[#6B7280] italic">No registered users in profile logs.</td>
+                  <td colSpan={5} className="p-8 text-center text-[#6B7280] italic">No registered users in profile logs.</td>
                 </tr>
               )}
             </tbody>
