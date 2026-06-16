@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -151,6 +152,35 @@ I can help you analyze trends, summarize statistical distributions, explain colu
     setGenerating(true);
 
     try {
+      // Enrich summaryStats with sum/totals of numeric columns from full dataset if missing
+      const enrichedStats = { ...(analysisRecord?.summary_stats || {}) } as any;
+      if (dataset.length > 0 && analysisRecord?.column_metadata) {
+        analysisRecord.column_metadata.forEach(col => {
+          if (col.type === 'Number') {
+            const colName = col.name;
+            const vals = dataset.map(r => Number(r[colName])).filter(v => !isNaN(v));
+            if (vals.length > 0) {
+              const sum = vals.reduce((a, b) => a + b, 0);
+              if (!enrichedStats[colName]) {
+                enrichedStats[colName] = {};
+              }
+              enrichedStats[colName].sum = Math.round(sum * 100) / 100;
+              
+              // Ensure average (mean), min, max are also populated
+              if (enrichedStats[colName].mean === undefined) {
+                enrichedStats[colName].mean = Math.round((sum / vals.length) * 100) / 100;
+              }
+              if (enrichedStats[colName].min === undefined) {
+                enrichedStats[colName].min = Math.min(...vals);
+              }
+              if (enrichedStats[colName].max === undefined) {
+                enrichedStats[colName].max = Math.max(...vals);
+              }
+            }
+          }
+        });
+      }
+
       const response = await fetch('/api/groq/chat', {
         method: 'POST',
         headers: {
@@ -159,8 +189,10 @@ I can help you analyze trends, summarize statistical distributions, explain colu
         body: JSON.stringify({
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           schemaMeta: analysisRecord?.column_metadata || [],
-          summaryStats: analysisRecord?.summary_stats || {},
-          sampleRows: dataset.slice(0, 10) // Pass first 10 rows as sample context
+          summaryStats: enrichedStats,
+          sampleRows: dataset.slice(0, 10), // Pass first 10 rows as sample context
+          fileName: fileRecord?.file_name || 'dataset.json',
+          totalRows: fileRecord?.row_count || dataset.length
         }),
       });
 
