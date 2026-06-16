@@ -42,46 +42,24 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        console.log('[Stripe Webhook] Processing checkout.session.completed. Session ID:', session.id);
-        console.log('[Stripe Webhook] Session Metadata:', JSON.stringify(session.metadata || {}));
+        console.log('[Stripe Webhook] Processing checkout.session.completed event...');
+        const session = event.data.object as any;
+        console.log('[Stripe Webhook] Extracted Stripe checkout session object successfully.');
         
-        const userId = session.metadata?.userId;
-        const stripeCustomerId = session.customer as string;
-        const stripeSubscriptionId = session.subscription as string;
+        const userId = session.metadata?.user_id;
+        console.log('[Stripe Webhook] Extracted user_id from session metadata:', userId);
         
-        console.log('[Stripe Webhook] Retrieved variables:', {
-          userId,
-          stripeCustomerId,
-          stripeSubscriptionId
-        });
-
-        if (!userId) {
-          console.error('[Stripe Webhook Error] No userId found in session.metadata. Cannot associate subscription with user. Metadata was:', session.metadata);
-          break;
-        }
-
-        if (!stripeSubscriptionId) {
-          console.error('[Stripe Webhook Error] No subscription ID found in session. Cannot retrieve subscription details.');
-          break;
-        }
-
-        console.log('[Stripe Webhook] Fetching subscription details from Stripe for ID:', stripeSubscriptionId);
-        const subDetails = await stripe.subscriptions.retrieve(stripeSubscriptionId) as any;
-        const periodEnd = new Date(subDetails.current_period_end * 1000).toISOString();
-        console.log('[Stripe Webhook] Subscription period end:', periodEnd);
-
-        console.log('[Stripe Webhook] Upserting subscription for user:', userId);
+        console.log('[Stripe Webhook] Executing Supabase upsert on subscriptions table...');
         const { error } = await supabase
           .from('subscriptions')
           .upsert({
             user_id: userId,
             plan: 'pro',
-            stripe_customer_id: stripeCustomerId,
-            stripe_subscription_id: stripeSubscriptionId,
             status: 'active',
-            current_period_end: periodEnd,
-          }, { onConflict: 'user_id' });
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          });
 
         if (error) {
           console.error('[Stripe Webhook Database Error] Failed to upsert subscription in database:', error.message, error);

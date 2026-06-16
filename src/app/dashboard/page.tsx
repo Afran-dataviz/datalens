@@ -37,6 +37,7 @@ export default function DashboardPage() {
   // User/Plan state
   const [user, setUser] = useState<any>(null);
   const [plan, setPlan] = useState('free');
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   
   // File state
   const [file, setFile] = useState<File | null>(null);
@@ -67,20 +68,79 @@ export default function DashboardPage() {
   // Save/Upload loading state
   const [saving, setSaving] = useState(false);
 
+  // Auto-dismiss success toast
+  useEffect(() => {
+    if (successToast) {
+      const timer = setTimeout(() => {
+        setSuccessToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successToast]);
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
+        
+        // 1. Detect success parameter in URL query
+        const searchParams = new URLSearchParams(window.location.search);
+        const hasSuccessParam = searchParams.get('success') === 'true';
+        
+        // 2. Fetch subscription status from database
         const { data: subscription } = await supabase
           .from('subscriptions')
           .select('plan, status')
           .eq('user_id', user.id)
           .maybeSingle();
+          
+        let currentPlan = 'free';
         if (subscription && subscription.plan === 'pro' && subscription.status === 'active') {
+          currentPlan = 'pro';
+        }
+        
+        if (currentPlan === 'pro') {
           setPlan('pro');
+          if (hasSuccessParam) {
+            setSuccessToast("Welcome to Pro!");
+            // Clean URL parameter
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         } else {
-          setPlan('free');
+          // If free (e.g. webhook failed or didn't process fast enough), do fallback check from Stripe API
+          console.log('[Dashboard] Local DB subscription shows free. Checking Stripe API status fallback...');
+          try {
+            const res = await fetch('/api/stripe/check-status');
+            if (res.ok) {
+              const statusData = await res.json();
+              if (statusData.plan === 'pro') {
+                currentPlan = 'pro';
+                setPlan('pro');
+                // Dispatch custom event to notify Sidebar layout immediately
+                window.dispatchEvent(new CustomEvent('subscription-updated', { detail: { plan: 'pro' } }));
+                
+                if (hasSuccessParam) {
+                  setSuccessToast("Welcome to Pro!");
+                } else {
+                  setSuccessToast("Restored subscription status from Stripe successfully!");
+                }
+                router.refresh();
+              } else {
+                setPlan('free');
+              }
+            } else {
+              setPlan('free');
+            }
+          } catch (err) {
+            console.error('[Dashboard Fallback Error] Stripe status query failed:', err);
+            setPlan('free');
+          }
+          
+          if (hasSuccessParam) {
+            // Clean URL parameter even if the lookup didn't succeed
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         }
       }
     };
@@ -1111,6 +1171,20 @@ export default function DashboardPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Success Toast */}
+      {successToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 p-4 rounded-xl bg-success/10 border border-success/30 text-success shadow-xl animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <Check className="w-5 h-5 shrink-0" />
+          <div className="font-semibold text-sm">{successToast}</div>
+          <button 
+            onClick={() => setSuccessToast(null)} 
+            className="ml-4 p-1 hover:bg-success/5 rounded transition text-success/70 hover:text-success"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

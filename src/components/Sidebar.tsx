@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -34,6 +34,25 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
   const supabase = createClient();
   
   const [collapsed, setCollapsed] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState(user.plan);
+
+  useEffect(() => {
+    setCurrentPlan(user.plan);
+  }, [user.plan]);
+
+  useEffect(() => {
+    const handleSubscriptionUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ plan: string }>;
+      if (customEvent.detail && typeof customEvent.detail.plan === 'string') {
+        console.log('[Sidebar] Received subscription-updated event. New plan:', customEvent.detail.plan);
+        setCurrentPlan(customEvent.detail.plan);
+      }
+    };
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+    };
+  }, []);
 
   const menuItems = [
     { name: "Upload & Clean", icon: <Upload className="w-5 h-5" />, href: "/dashboard" },
@@ -146,7 +165,7 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate leading-tight flex items-center gap-1.5">
                   <span className="truncate">{user.fullName}</span>
-                  {user.plan === 'pro' ? (
+                  {currentPlan === 'pro' ? (
                     <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded leading-none bg-gold text-[#080A0F] border border-gold-light shrink-0">
                       PRO
                     </span>
@@ -158,11 +177,11 @@ export default function Sidebar({ user, mobileOpen = false, onClose }: SidebarPr
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded leading-none ${
-                    user.plan === 'pro' 
+                    currentPlan === 'pro' 
                       ? 'bg-gold/10 text-gold-light border border-gold/20' 
                       : 'bg-card2 text-text-muted border border-border'
                   }`}>
-                    {user.plan}
+                    {currentPlan}
                   </span>
                 </div>
               </div>

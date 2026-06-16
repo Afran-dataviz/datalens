@@ -34,10 +34,10 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?upgraded=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      success_url: `https://datalens-blond.vercel.app/dashboard?success=true`,
+      cancel_url: `https://datalens-blond.vercel.app/dashboard?canceled=true`,
       metadata: {
-        userId,
+        user_id: userId,
       },
       customer_email: email,
     });
