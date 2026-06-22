@@ -12,7 +12,7 @@ https://datalens-blond.vercel.app/
 
 ## 📸 Project Showcase
 
-![DataLens Showcase](./collage.png)
+![DataLens Showcase](./screenshots/collage.png)
 
 ---
 
